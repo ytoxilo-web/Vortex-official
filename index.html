@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vortex - Equipe Brawl Stars</title>
+    <meta
+      name="description"
+      content="Vortex est une equipe e-sport Brawl Stars ambitieuse, organisee autour du collectif, de l'entrainement et de la competition."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="topbar" id="top">
+        <a class="brand" href="#top" aria-label="Accueil Vortex">
+          <span class="brand-mark" aria-hidden="true">
+            <span class="brand-v">V</span>
+          </span>
+          <span>
+            <strong>Vortex</strong>
+            <small>Brawl Stars Team</small>
+          </span>
+        </a>
+
+        <button class="nav-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <nav class="nav" aria-label="Navigation principale">
+          <a href="#team">Equipe</a>
+          <a href="#objectifs">Objectifs</a>
+          <a href="#recrutement">Recrutement</a>
+          <a href="#membres">Membre</a>
+          <a href="#faq">FAQ</a>
+          <button class="admin-nav-button" type="button">Admin</button>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-bg" aria-hidden="true">
+            <span class="lane lane-one"></span>
+            <span class="lane lane-two"></span>
+            <span class="lane lane-three"></span>
+          </div>
+
+          <div class="hero-content">
+            <p class="eyebrow">Equipe e-sport Brawl Stars</p>
+            <h1>Vortex</h1>
+            <p class="hero-copy">
+              Une equipe ambitieuse, propre et soudee, construite pour progresser ensemble,
+              performer en tournoi et garder une vraie mentalite de groupe.
+            </p>
+
+            <div class="hero-actions">
+              <a class="button primary" href="#recrutement">Nous rejoindre</a>
+              <a class="button ghost" href="#team">Decouvrir l'equipe</a>
+            </div>
+          </div>
+
+        </section>
+
+        <section class="notice">
+          <div>
+            <strong>Recrutements ouverts</strong>
+            <p>Vortex cherche des joueurs motives, reguliers et respectueux pour renforcer le roster.</p>
+          </div>
+          <a class="button compact" href="#recrutement">Voir les criteres</a>
+        </section>
+
+        <section class="section members" id="membres">
+          <div class="section-heading">
+            <p class="eyebrow">Membres</p>
+            <h2>Les rosters Vortex.</h2>
+            <p>
+              Les joueurs sont classes par roster selon leur niveau, leur role et leur progression.
+            </p>
+          </div>
+
+          <div class="member-admin-panel" hidden>
+            <div class="member-admin-header">
+              <div>
+                <strong>Gestion des rosters</strong>
+                <span>Ajoute, modifie, supprime et deplace les joueurs entre les rosters.</span>
+              </div>
+              <button class="button compact add-roster-button" type="button">Ajouter un roster</button>
+            </div>
+
+            <form class="member-form" hidden>
+              <input type="hidden" name="member-id" />
+              <label>
+                Pseudo
+                <input name="member-name" type="text" placeholder="Pseudo du joueur" required />
+              </label>
+              <label>
+                Role
+                <input name="member-role" type="text" placeholder="Ex : Carry, Support, Flex" />
+              </label>
+              <label>
+                Niveau
+                <input name="member-level" type="text" placeholder="Ex : 65K, Master, Tryhard" />
+              </label>
+              <label>
+                Roster
+                <select name="member-roster" required></select>
+              </label>
+              <div class="member-form-actions">
+                <button class="button primary" type="submit">Sauvegarder</button>
+                <button class="button ghost cancel-member-edit" type="button">Annuler</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="roster-board" aria-live="polite"></div>
+        </section>
+
+        <section class="section split" id="team">
+          <div class="section-copy">
+            <p class="eyebrow">Notre identite</p>
+            <h2>Une structure simple, serieuse et lisible.</h2>
+            <p>
+              Vortex avance avec une idee claire : jouer intelligemment, communiquer proprement et
+              faire progresser chaque joueur sans perdre le plaisir du jeu.
+            </p>
+          </div>
+
+          <div class="feature-list">
+            <article class="feature">
+              <span class="feature-icon">01</span>
+              <h3>Equipe competitive</h3>
+              <p>Entrainements, tournois, analyse de parties et objectifs suivis semaine apres semaine.</p>
+            </article>
+            <article class="feature">
+              <span class="feature-icon">02</span>
+              <h3>Ambiance saine</h3>
+              <p>Respect, communication claire et mental solide, meme quand les games deviennent tendues.</p>
+            </article>
+            <article class="feature">
+              <span class="feature-icon">03</span>
+              <h3>Progression collective</h3>
+              <p>Le niveau individuel compte, mais la vraie force de Vortex reste le jeu d'equipe.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="objectifs">
+          <div class="section-heading">
+            <p class="eyebrow">Objectifs</p>
+            <h2>Ce que Vortex construit.</h2>
+          </div>
+
+          <div class="timeline">
+            <article>
+              <span></span>
+              <h3>Former un roster stable</h3>
+              <p>Des joueurs presents, fiables et capables de travailler ensemble sur la duree.</p>
+            </article>
+            <article>
+              <span></span>
+              <h3>Monter en niveau</h3>
+              <p>Scrims, retours de match, compositions adaptees et decisions plus propres en fin de game.</p>
+            </article>
+            <article>
+              <span></span>
+              <h3>Representer Vortex</h3>
+              <p>Participer aux evenements Brawl Stars avec une image serieuse, reconnaissable et respectee.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section recruitment" id="recrutement">
+          <div class="section-copy">
+            <p class="eyebrow">Recrutement</p>
+            <h2>Tu veux porter les couleurs de Vortex ?</h2>
+            <p>
+              On recherche des profils constants, avec une bonne mentalite et l'envie de s'investir.
+              Le niveau compte, mais la disponibilite et l'attitude font la difference.
+            </p>
+            <a class="button primary" href="https://discord.gg/" target="_blank" rel="noreferrer">
+              Rejoindre le Discord
+            </a>
+          </div>
+
+          <div class="criteria">
+            <h3>Criteres principaux</h3>
+            <ul>
+              <li>Avoir une bonne connaissance des modes 3v3</li>
+              <li>Etre disponible plusieurs fois par semaine</li>
+              <li>Accepter les retours et progresser sans ego</li>
+              <li>Communiquer clairement en vocal ou par message</li>
+              <li>Respecter les adversaires, les mates et le staff</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section community">
+          <div class="section-heading">
+            <p class="eyebrow">Communaute</p>
+            <h2>Un cadre pour jouer mieux, ensemble.</h2>
+          </div>
+
+          <div class="community-grid">
+            <article>
+              <strong>Scrims</strong>
+              <span>Entrainements organises pour tester les compos et automatismes.</span>
+            </article>
+            <article>
+              <strong>Tournois</strong>
+              <span>Participation aux competitions accessibles selon le niveau du roster.</span>
+            </article>
+            <article>
+              <strong>Coaching</strong>
+              <span>Retours collectifs pour corriger les placements, drafts et timings.</span>
+            </article>
+            <article>
+              <strong>Staff</strong>
+              <span>Une organisation claire pour garder l'equipe active et agreable.</span>
+            </article>
+          </div>
+        </section>
+
+        <section class="section faq" id="faq">
+          <div class="section-heading">
+            <p class="eyebrow">Questions</p>
+            <h2>Avant de postuler.</h2>
+          </div>
+
+          <div class="accordion">
+            <details open>
+              <summary>Faut-il deja avoir une equipe ?</summary>
+              <p>Non. Tu peux postuler seul, puis le staff regarde ton profil, ta disponibilite et ton style de jeu.</p>
+            </details>
+            <details>
+              <summary>Quel niveau est demande ?</summary>
+              <p>Vortex cherche surtout des joueurs motives et reguliers. Un bon niveau aide, mais la mentalite reste essentielle.</p>
+            </details>
+            <details>
+              <summary>Comment se passe le test ?</summary>
+              <p>Un premier echange, quelques games ou scrims, puis un retour honnete sur ton integration possible dans le roster.</p>
+            </details>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <span class="brand-v">V</span>
+          </span>
+          <span>
+            <strong>Vortex</strong>
+            <small>Brawl Stars Team</small>
+          </span>
+        </div>
+        <p>Vortex &copy; 2026 - Equipe e-sport Brawl Stars</p>
+      </footer>
+    </div>
+
+    <div class="admin-modal" aria-hidden="true">
+      <div class="admin-card" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+        <button class="admin-close" type="button" aria-label="Fermer le panel admin">&times;</button>
+        <p class="eyebrow">Acces prive</p>
+        <h2 id="admin-title">Panel admin</h2>
+        <p>Entre le code a 4 chiffres pour modifier les textes du site.</p>
+        <form class="admin-form">
+          <label for="admin-code">Code admin</label>
+          <input
+            id="admin-code"
+            name="admin-code"
+            type="password"
+            inputmode="numeric"
+            maxlength="4"
+            autocomplete="off"
+          />
+          <button class="button primary" type="submit">Valider</button>
+        </form>
+        <p class="admin-error" role="alert"></p>
+      </div>
+    </div>
+
+    <div class="admin-toolbar" hidden>
+      <span>Mode admin actif</span>
+      <button type="button" class="admin-reset">Reinitialiser les textes</button>
+      <button type="button" class="admin-logout">Quitter</button>
+    </div>
+
+    <script>
+      window.VORTEX_SUPABASE = {
+        url: "https://whrtybqkvuccnlulvuyr.supabase.co",
+        anonKey: "sb_publishable_qeDNWeT8pS4mcAzsS9Sr-Q_XVnpuK3p",
+        realtime: true
+      };
+    </script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

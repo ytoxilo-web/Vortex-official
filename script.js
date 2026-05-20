@@ -1,5 +1,7 @@
 const navToggle = document.querySelector(".nav-toggle");
 const nav = document.querySelector(".nav");
+const welcomeScreen = document.querySelector(".welcome-screen");
+const welcomeContinue = document.querySelector(".welcome-continue");
 const adminButton = document.querySelector(".admin-nav-button");
 const adminModal = document.querySelector(".admin-modal");
 const adminClose = document.querySelector(".admin-close");
@@ -93,7 +95,7 @@ const editableSelector = [
 ].join(", ");
 
 const editableElements = Array.from(document.querySelectorAll(editableSelector)).filter(
-  (element) => !element.closest(".members")
+  (element) => !element.closest(".members") && !element.closest("[data-static]")
 );
 const contentElements = new Map();
 const saveTimers = new Map();
@@ -110,6 +112,17 @@ if (navToggle && nav) {
 
   nav.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", closeMobileNav);
+  });
+}
+
+if (welcomeScreen && welcomeContinue) {
+  welcomeContinue.focus();
+  welcomeContinue.addEventListener("click", closeWelcomeScreen);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !welcomeScreen.classList.contains("is-hidden")) {
+      closeWelcomeScreen();
+    }
   });
 }
 
@@ -148,6 +161,7 @@ loadCachedRosters();
 loadRosterData();
 subscribeToContentChanges();
 subscribeToRosterChanges();
+initRevealAnimation();
 
 if (adminButton) {
   adminButton.addEventListener("click", () => {
@@ -492,6 +506,44 @@ function closeMobileNav() {
   navToggle.setAttribute("aria-expanded", "false");
 }
 
+function closeWelcomeScreen() {
+  if (!welcomeScreen) {
+    return;
+  }
+
+  welcomeScreen.classList.add("is-hidden");
+  welcomeScreen.setAttribute("aria-hidden", "true");
+}
+
+function initRevealAnimation() {
+  const revealElements = document.querySelectorAll(
+    ".notice, .section, .feature, .timeline article, .criteria, .community-grid article, .roster-column"
+  );
+
+  if (!("IntersectionObserver" in window)) {
+    revealElements.forEach((element) => element.classList.add("is-visible"));
+    return;
+  }
+
+  revealElements.forEach((element) => element.classList.add("reveal"));
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) {
+          return;
+        }
+
+        entry.target.classList.add("is-visible");
+        observer.unobserve(entry.target);
+      });
+    },
+    { threshold: 0.12 }
+  );
+
+  revealElements.forEach((element) => observer.observe(element));
+}
+
 function loadCachedRosters() {
   try {
     const cachedData = JSON.parse(localStorage.getItem(ROSTER_CACHE_KEY));
@@ -558,7 +610,7 @@ function renderRosters() {
 
   sortedRosters.forEach((roster) => {
     const column = document.createElement("article");
-    column.className = "roster-column";
+    column.className = "roster-column reveal is-visible";
     column.dataset.rosterId = roster.id;
 
     column.addEventListener("dragover", (event) => {

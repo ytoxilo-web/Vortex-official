@@ -17,6 +17,20 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div class="welcome-screen" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+      <div class="welcome-bg" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <div class="welcome-content">
+        <p class="eyebrow">Equipe e-sport Brawl Stars</p>
+        <h2 id="welcome-title">Bienvenue chez Vortex</h2>
+        <p>Decouvre l'equipe, les rosters et les candidatures ouvertes.</p>
+        <button class="button primary welcome-continue" type="button">Continuer</button>
+      </div>
+    </div>
+
     <div class="site-shell">
       <header class="topbar" id="top">
         <a class="brand" href="#top" aria-label="Accueil Vortex">
@@ -185,9 +199,13 @@
               On recherche des profils constants, avec une bonne mentalite et l'envie de s'investir.
               Le niveau compte, mais la disponibilite et l'attitude font la difference.
             </p>
-            <a class="button primary" href="https://discord.gg/skJ6mxNjx2" target="_blank" rel="noreferrer">
-              Rejoindre le Discord
-            </a>
+            <div class="discord-cta" data-static>
+              <span class="discord-pill">Candidatures ouvertes</span>
+              <a class="button primary discord-button" href="https://discord.gg/skJ6mxNjx2" target="_blank" rel="noreferrer">
+                Rejoindre le Discord
+              </a>
+              <p>Rejoins la communaute, presente ton profil et passe par le staff pour tenter ta place.</p>
+            </div>
           </div>
 
           <div class="criteria">

@@ -49,6 +49,80 @@ a {
   overflow: hidden;
 }
 
+.welcome-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(76, 184, 255, 0.34), transparent 24rem),
+    radial-gradient(circle at 78% 26%, rgba(255, 200, 87, 0.18), transparent 22rem),
+    linear-gradient(145deg, #101f31 0%, #132940 48%, #0f1b2a 100%);
+  transition: opacity 520ms ease, visibility 520ms ease;
+}
+
+.welcome-screen.is-hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.welcome-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.welcome-bg span {
+  position: absolute;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(125, 227, 255, 0.9), transparent);
+  animation: welcomeLine 5.5s ease-in-out infinite;
+}
+
+.welcome-bg span:nth-child(1) {
+  top: 24%;
+  left: 12%;
+  width: 46%;
+}
+
+.welcome-bg span:nth-child(2) {
+  top: 52%;
+  right: 8%;
+  width: 34%;
+  animation-delay: -1.8s;
+}
+
+.welcome-bg span:nth-child(3) {
+  bottom: 23%;
+  left: 28%;
+  width: 26%;
+  animation-delay: -3.2s;
+}
+
+.welcome-content {
+  position: relative;
+  width: min(680px, 100%);
+  text-align: center;
+  animation: welcomeContentIn 760ms ease both;
+}
+
+.welcome-content h2 {
+  margin-bottom: 16px;
+  font-size: clamp(2.7rem, 8vw, 6.8rem);
+}
+
+.welcome-content p:not(.eyebrow) {
+  max-width: 520px;
+  margin: 0 auto 28px;
+  color: #d4e4f2;
+  font-size: clamp(1rem, 2vw, 1.18rem);
+}
+
 .topbar {
   position: sticky;
   top: 0;
@@ -65,6 +139,7 @@ a {
   background: rgba(15, 27, 42, 0.78);
   box-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
   backdrop-filter: blur(18px);
+  animation: pageDropIn 650ms ease both;
 }
 
 .brand {
@@ -177,6 +252,26 @@ a {
   max-width: 780px;
 }
 
+.hero-content > * {
+  animation: heroFadeUp 720ms ease both;
+}
+
+.hero-content > :nth-child(1) {
+  animation-delay: 80ms;
+}
+
+.hero-content > :nth-child(2) {
+  animation-delay: 160ms;
+}
+
+.hero-content > :nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.hero-content > :nth-child(4) {
+  animation-delay: 320ms;
+}
+
 .hero-bg {
   position: absolute;
   inset: 34px -20vw 18px;
@@ -225,6 +320,51 @@ a {
   50% {
     transform: translateX(18px);
     opacity: 0.8;
+  }
+}
+
+@keyframes pageDropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes welcomeContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes welcomeLine {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: translateX(-18px);
+  }
+  50% {
+    opacity: 0.86;
+    transform: translateX(24px);
   }
 }
 
@@ -304,6 +444,16 @@ p {
   background: linear-gradient(135deg, var(--blue), var(--blue-deep));
   box-shadow: 0 18px 32px rgba(18, 108, 173, 0.24);
   color: #ffffff;
+}
+
+.button.discord-button {
+  min-width: 220px;
+  min-height: 54px;
+  border-color: rgba(255, 255, 255, 0.18);
+  background:
+    linear-gradient(135deg, rgba(255, 200, 87, 0.95), rgba(76, 184, 255, 0.95)),
+    var(--blue);
+  box-shadow: 0 20px 38px rgba(76, 184, 255, 0.28);
 }
 
 .button.ghost {
@@ -447,6 +597,35 @@ p {
   padding: 24px;
   background: var(--slate);
   box-shadow: var(--shadow);
+}
+
+.discord-cta {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.discord-cta p {
+  max-width: 430px;
+  margin-bottom: 0;
+  color: #c8d8e8;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.discord-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid rgba(255, 200, 87, 0.48);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255, 200, 87, 0.12);
+  color: #ffe3a1;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .criteria h3 {
@@ -879,6 +1058,17 @@ p {
   cursor: pointer;
 }
 
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 600ms ease, transform 600ms ease;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 [contenteditable="true"] {
   outline: 1px dashed rgba(125, 227, 255, 0.5);
   outline-offset: 5px;
@@ -947,6 +1137,22 @@ p {
     grid-template-columns: 1fr 1fr;
   }
 
+  .roster-top,
+  .member-main {
+    align-items: flex-start;
+  }
+
+  .roster-title,
+  .member-main {
+    min-width: 0;
+  }
+
+  .member-actions,
+  .roster-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
   .member-form {
     grid-template-columns: 1fr 1fr;
   }
@@ -964,6 +1170,14 @@ p {
     width: 100%;
   }
 
+  .brand {
+    gap: 10px;
+  }
+
+  .brand small {
+    font-size: 0.68rem;
+  }
+
   .notice,
   .section,
   .footer {
@@ -978,6 +1192,41 @@ p {
   .community-grid,
   .roster-board {
     grid-template-columns: 1fr;
+  }
+
+  .roster-top,
+  .member-main {
+    gap: 10px;
+  }
+
+  .roster-actions,
+  .member-actions {
+    display: none;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .admin-active .roster-actions,
+  .admin-active .member-actions {
+    display: flex;
+  }
+
+  .admin-active .roster-top,
+  .admin-active .member-main {
+    flex-direction: column;
+  }
+
+  .member-meta span {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .discord-cta {
+    justify-items: stretch;
+  }
+
+  .discord-pill {
+    justify-content: center;
   }
 
   .member-admin-header,
@@ -1006,6 +1255,10 @@ p {
     flex-direction: column;
     align-items: stretch;
   }
+
+  .admin-toolbar span {
+    text-align: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1016,5 +1269,10 @@ p {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
   }
 }

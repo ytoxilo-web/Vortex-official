@@ -681,6 +681,41 @@ p {
   font-weight: 900;
 }
 
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.staff-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  background: rgba(21, 35, 53, 0.92);
+}
+
+.staff-card strong {
+  display: block;
+  color: #ffffff;
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.staff-card span {
+  display: inline-flex;
+  margin: 10px 0;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(125, 227, 255, 0.12);
+  color: var(--cyan);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.staff-card p {
+  margin-bottom: 0;
+}
+
 .roster-board {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1043,7 +1078,12 @@ p {
 }
 
 .admin-identity-buttons button,
-.admin-clear-history {
+.admin-clear-history,
+.admin-create-backup,
+.admin-log-filter,
+.admin-create-form input,
+.admin-create-form select,
+.admin-announcement-form input {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 10px;
@@ -1055,7 +1095,8 @@ p {
 }
 
 .admin-identity-buttons button:hover,
-.admin-clear-history:hover {
+.admin-clear-history:hover,
+.admin-create-backup:hover {
   border-color: rgba(125, 227, 255, 0.54);
   background: rgba(125, 227, 255, 0.12);
 }
@@ -1136,6 +1177,11 @@ p {
   margin-bottom: 12px;
 }
 
+.admin-log-tools {
+  display: flex;
+  gap: 8px;
+}
+
 .admin-panel-heading h3 {
   margin-bottom: 4px;
 }
@@ -1152,9 +1198,21 @@ p {
 
 .admin-log-item {
   display: grid;
-  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1fr) minmax(140px, 0.8fr);
+  grid-template-columns: auto minmax(120px, 0.7fr) minmax(0, 1fr) minmax(170px, 0.8fr) auto;
+  align-items: center;
   gap: 10px;
   padding: 12px;
+}
+
+.admin-log-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(125, 227, 255, 0.12);
+  color: var(--cyan);
+  font-weight: 900;
 }
 
 .admin-log-item strong {
@@ -1166,6 +1224,64 @@ p {
   color: #b9cadb;
   font-size: 0.86rem;
   font-weight: 800;
+}
+
+.admin-log-details {
+  grid-column: 1 / -1;
+  display: none;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  color: #d7e7f6;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+}
+
+.admin-log-item.is-open .admin-log-details {
+  display: block;
+}
+
+.admin-log-details-button,
+.admin-small-action {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 9px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-create-form,
+.admin-announcement-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 180px auto;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.admin-announcement-form {
+  grid-template-columns: 1fr 1.4fr auto;
+}
+
+.admin-announcement-list,
+.admin-backup-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-announcement-item,
+.admin-backup-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-announcement-item strong,
+.admin-backup-item strong {
+  color: #ffffff;
 }
 
 .admin-permission-card {
@@ -1186,7 +1302,7 @@ p {
 
 .admin-permission-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1198,6 +1314,29 @@ p {
   color: #d7e7f6;
   font-size: 0.84rem;
   font-weight: 900;
+}
+
+.admin-role-select {
+  width: 100%;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 900;
+}
+
+.admin-role-select option {
+  color: #111925;
+}
+
+.admin-permission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .admin-toolbar {
@@ -1373,7 +1512,8 @@ p {
 
   .timeline,
   .community-grid,
-  .roster-board {
+  .roster-board,
+  .staff-grid {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -1430,7 +1570,8 @@ p {
 
   .timeline,
   .community-grid,
-  .roster-board {
+  .roster-board,
+  .staff-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1509,12 +1650,15 @@ p {
   .admin-identity-buttons,
   .admin-panel-summary,
   .admin-log-item,
-  .admin-permission-grid {
+  .admin-permission-grid,
+  .admin-create-form,
+  .admin-announcement-form {
     grid-template-columns: 1fr;
   }
 
   .admin-panel-heading,
-  .admin-permission-top {
+  .admin-permission-top,
+  .admin-log-tools {
     align-items: stretch;
     flex-direction: column;
   }

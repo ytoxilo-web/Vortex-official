@@ -18,12 +18,20 @@ const adminPanelClose = document.querySelector(".admin-panel-close");
 const adminPanelSummary = document.querySelector(".admin-panel-summary");
 const adminPermissionsSection = document.querySelector(".admin-permissions-section");
 const adminPermissionsList = document.querySelector(".admin-permissions-list");
+const adminCreateForm = document.querySelector(".admin-create-form");
+const adminAnnouncementsSection = document.querySelector(".admin-announcements-section");
+const adminAnnouncementForm = document.querySelector(".admin-announcement-form");
+const adminAnnouncementList = document.querySelector(".admin-announcement-list");
+const adminBackupsSection = document.querySelector(".admin-backups-section");
+const adminCreateBackup = document.querySelector(".admin-create-backup");
+const adminBackupList = document.querySelector(".admin-backup-list");
 const adminLogList = document.querySelector(".admin-log-list");
+const adminLogFilter = document.querySelector(".admin-log-filter");
 const adminClearHistory = document.querySelector(".admin-clear-history");
 const adminScrollTop = document.querySelector(".admin-scroll-top");
 const adminLogout = document.querySelector(".admin-logout");
-const adminReset = document.querySelector(".admin-reset");
 const rosterBoard = document.querySelector(".roster-board");
+const staffGrid = document.querySelector(".staff-grid");
 const memberAdminPanel = document.querySelector(".member-admin-panel");
 const addRosterButton = document.querySelector(".add-roster-button");
 const memberForm = document.querySelector(".member-form");
@@ -37,6 +45,7 @@ const ADMIN_CODE_SESSION_KEY = "vortex-admin-code";
 const ADMIN_NAME_SESSION_KEY = "vortex-admin-name";
 const ADMIN_ROLE_SESSION_KEY = "vortex-admin-role";
 const ADMIN_PERMISSIONS_SESSION_KEY = "vortex-admin-permissions";
+const ADMIN_SESSION_VERSION_KEY = "vortex-admin-session-version";
 const SAVE_DELAY = 450;
 const PERMISSION_LABELS = {
   edit_content: "Modifier les textes",
@@ -45,6 +54,11 @@ const PERMISSION_LABELS = {
   view_history: "Voir l'historique",
   manage_permissions: "Gerer les permissions",
   clear_history: "Vider l'historique",
+  manage_admins: "Gerer les admins",
+  manage_announcements: "Annonces internes",
+  manage_backups: "Backups/restauration",
+  manage_staff: "Gerer le staff",
+  force_logout: "Forcer deconnexion",
 };
 
 const CONTENT_KEYS = [
@@ -125,6 +139,7 @@ const saveTimers = new Map();
 const supabaseClient = createSupabaseClient();
 let rosters = [];
 let members = [];
+let staffMembers = [];
 let draggedMemberId = null;
 let saveStatusTimer = null;
 let pendingAdminCode = "";
@@ -184,6 +199,7 @@ loadCachedContent();
 loadSupabaseContent();
 loadCachedRosters();
 loadRosterData();
+loadStaffData();
 subscribeToContentChanges();
 subscribeToRosterChanges();
 initRevealAnimation();
@@ -231,24 +247,6 @@ if (adminForm) {
   });
 }
 
-if (adminIdentityStep) {
-  adminIdentityStep.querySelectorAll("[data-admin-name]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const adminName = button.dataset.adminName || "";
-      const session = await verifyAdminIdentity(adminName, pendingAdminCode);
-
-      if (!session) {
-        showAdminError("Code incorrect pour cet admin.");
-        return;
-      }
-
-      storeAdminSession(session, pendingAdminCode);
-      closeAdminModal();
-      enableAdminMode();
-    });
-  });
-}
-
 if (adminLogout) {
   adminLogout.addEventListener("click", () => {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
@@ -256,6 +254,7 @@ if (adminLogout) {
     sessionStorage.removeItem(ADMIN_NAME_SESSION_KEY);
     sessionStorage.removeItem(ADMIN_ROLE_SESSION_KEY);
     sessionStorage.removeItem(ADMIN_PERMISSIONS_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_SESSION_VERSION_KEY);
     disableAdminMode();
   });
 }
@@ -280,6 +279,22 @@ if (adminClearHistory) {
   adminClearHistory.addEventListener("click", clearAdminHistory);
 }
 
+if (adminLogFilter) {
+  adminLogFilter.addEventListener("change", loadAdminPanelData);
+}
+
+if (adminCreateForm) {
+  adminCreateForm.addEventListener("submit", createAdminFromPanel);
+}
+
+if (adminAnnouncementForm) {
+  adminAnnouncementForm.addEventListener("submit", createAnnouncementFromPanel);
+}
+
+if (adminCreateBackup) {
+  adminCreateBackup.addEventListener("click", createContentBackup);
+}
+
 if (adminScrollTop) {
   adminScrollTop.addEventListener("click", () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -300,16 +315,6 @@ document.addEventListener("keydown", (event) => {
   closeWelcomeScreen();
   enableAdminMode();
 });
-
-if (adminReset) {
-  adminReset.addEventListener("click", () => {
-    editableElements.forEach((element) => {
-      const contentKey = element.dataset.contentKey;
-      element.innerText = element.dataset.originalText;
-      queueContentSave(contentKey, element.dataset.originalText);
-    });
-  });
-}
 
 if (addRosterButton) {
   addRosterButton.addEventListener("click", async () => {
@@ -357,6 +362,8 @@ if (cancelMemberEdit) {
 if (isAdminActive()) {
   enableAdminMode();
 }
+
+setInterval(checkAdminSessionStillValid, 30000);
 
 function createSupabaseClient() {
   const config = window.VORTEX_SUPABASE || {};
@@ -498,6 +505,48 @@ async function verifyAdminIdentity(adminName, adminCode) {
   return data;
 }
 
+async function loadAdminIdentityButtons() {
+  if (!adminIdentityStep) {
+    return;
+  }
+
+  const buttonWrap = adminIdentityStep.querySelector(".admin-identity-buttons");
+
+  if (!buttonWrap) {
+    return;
+  }
+
+  let adminNames = ["Ayoub", "Malo", "Quentin"];
+
+  if (supabaseClient) {
+    const { data, error } = await supabaseClient.rpc("get_site_admin_names");
+
+    if (!error && data?.length) {
+      adminNames = data.map((item) => item.name);
+    }
+  }
+
+  buttonWrap.innerHTML = adminNames
+    .map((name) => `<button type="button" data-admin-name="${escapeHtml(name)}">${escapeHtml(name)}</button>`)
+    .join("");
+
+  buttonWrap.querySelectorAll("[data-admin-name]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const adminName = button.dataset.adminName || "";
+      const session = await verifyAdminIdentity(adminName, pendingAdminCode);
+
+      if (!session) {
+        showAdminError("Code incorrect pour cet admin.");
+        return;
+      }
+
+      storeAdminSession(session, pendingAdminCode);
+      closeAdminModal();
+      enableAdminMode();
+    });
+  });
+}
+
 function subscribeToContentChanges() {
   const realtimeEnabled = window.VORTEX_SUPABASE && window.VORTEX_SUPABASE.realtime;
 
@@ -550,6 +599,7 @@ function openAdminModal() {
   if (adminIdentityStep) {
     adminIdentityStep.hidden = true;
   }
+  loadAdminIdentityButtons();
   showAdminError("");
   adminCodeInput.focus();
 }
@@ -627,6 +677,7 @@ function storeAdminSession(session, adminCode) {
   sessionStorage.setItem(ADMIN_NAME_SESSION_KEY, session.name || "");
   sessionStorage.setItem(ADMIN_ROLE_SESSION_KEY, session.role || "admin");
   sessionStorage.setItem(ADMIN_PERMISSIONS_SESSION_KEY, JSON.stringify(session.permissions || {}));
+  sessionStorage.setItem(ADMIN_SESSION_VERSION_KEY, String(session.session_version || 1));
 }
 
 function getAdminContext() {
@@ -635,6 +686,7 @@ function getAdminContext() {
     code: sessionStorage.getItem(ADMIN_CODE_SESSION_KEY) || "",
     role: sessionStorage.getItem(ADMIN_ROLE_SESSION_KEY) || "admin",
     permissions: readAdminPermissions(),
+    sessionVersion: Number(sessionStorage.getItem(ADMIN_SESSION_VERSION_KEY) || 1),
   };
 }
 
@@ -649,6 +701,31 @@ function readAdminPermissions() {
 function hasPermission(permission) {
   const context = getAdminContext();
   return context.role === "owner" || context.permissions[permission] === true;
+}
+
+async function checkAdminSessionStillValid() {
+  if (!isAdminActive() || !supabaseClient) {
+    return;
+  }
+
+  const context = getAdminContext();
+
+  if (!context.name || !context.code) {
+    return;
+  }
+
+  const session = await verifyAdminIdentity(context.name, context.code);
+
+  if (!session || Number(session.session_version || 1) !== context.sessionVersion) {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_CODE_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_NAME_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_ROLE_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_PERMISSIONS_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_SESSION_VERSION_KEY);
+    disableAdminMode();
+    showAdminError("Session admin expiree.");
+  }
 }
 
 function showAdminError(message) {
@@ -787,6 +864,51 @@ function seedDefaultRosterData() {
   ];
   members = [];
   renderRosters();
+}
+
+async function loadStaffData() {
+  if (!supabaseClient) {
+    staffMembers = [
+      { name: "Malo", role: "Owner", description: "Gestion du site, permissions et organisation globale." },
+      { name: "Ayoub", role: "Admin", description: "Gestion Vortex et suivi de l'equipe." },
+      { name: "Quentin", role: "Admin", description: "Support staff et aide a la gestion." },
+    ];
+    renderStaff();
+    return;
+  }
+
+  const { data, error } = await supabaseClient.from("site_staff").select("*").order("sort_order").order("name");
+
+  if (error) {
+    console.error("Impossible de charger le staff.", error);
+    return;
+  }
+
+  staffMembers = data || [];
+  renderStaff();
+}
+
+function renderStaff() {
+  if (!staffGrid) {
+    return;
+  }
+
+  if (staffMembers.length === 0) {
+    staffGrid.innerHTML = '<p>Aucun membre du staff pour le moment.</p>';
+    return;
+  }
+
+  staffGrid.innerHTML = staffMembers
+    .map(
+      (member) => `
+        <article class="staff-card">
+          <strong>${escapeHtml(member.name)}</strong>
+          <span>${escapeHtml(member.role || "Staff")}</span>
+          <p>${escapeHtml(member.description || "")}</p>
+        </article>
+      `
+    )
+    .join("");
 }
 
 function renderRosters() {
@@ -1172,6 +1294,14 @@ function renderAdminPanelBase() {
     adminPermissionsSection.hidden = !hasPermission("manage_permissions");
   }
 
+  if (adminAnnouncementsSection) {
+    adminAnnouncementsSection.hidden = !hasPermission("manage_announcements");
+  }
+
+  if (adminBackupsSection) {
+    adminBackupsSection.hidden = !hasPermission("manage_backups");
+  }
+
   if (adminClearHistory) {
     adminClearHistory.hidden = !hasPermission("clear_history");
   }
@@ -1188,6 +1318,7 @@ async function loadAdminPanelData() {
     const { data, error } = await supabaseClient.rpc("get_site_admin_logs", {
       p_admin_name: context.name,
       p_admin_code: context.code,
+      p_range: adminLogFilter?.value || "all",
     });
 
     if (error) {
@@ -1215,6 +1346,14 @@ async function loadAdminPanelData() {
       renderAdminPermissions(data || []);
     }
   }
+
+  if (hasPermission("manage_announcements")) {
+    await loadInternalAnnouncements();
+  }
+
+  if (hasPermission("manage_backups")) {
+    await loadContentBackups();
+  }
 }
 
 function renderAdminLogs(logs) {
@@ -1230,15 +1369,33 @@ function renderAdminLogs(logs) {
   adminLogList.innerHTML = logs
     .map((log) => {
       const date = new Date(log.created_at);
+      const detailText = formatLogDetails(log);
+      const restoreButton =
+        hasPermission("manage_backups") && log.action === "edit_content" && log.details?.before !== null
+          ? `<button class="admin-small-action restore-text-version" type="button" data-log-id="${log.id}">Restaurer</button>`
+          : "";
       return `
         <article class="admin-log-item">
+          <span class="admin-log-icon">${escapeHtml(getActionIcon(log.action))}</span>
           <strong>${escapeHtml(log.admin_name)}</strong>
-          <span>${escapeHtml(formatAdminAction(log.action))} - ${escapeHtml(log.target || "-")}</span>
-          <time datetime="${escapeHtml(log.created_at)}">${escapeHtml(date.toLocaleString("fr-FR"))}</time>
+          <span>${escapeHtml(formatAdminAction(log.action))} - ${escapeHtml(getLogTargetText(log))}</span>
+          <time datetime="${escapeHtml(log.created_at)}">${escapeHtml(date.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "medium" }))}</time>
+          <button class="admin-log-details-button" type="button">Details</button>
+          <div class="admin-log-details">${escapeHtml(detailText)}${restoreButton}</div>
         </article>
       `;
     })
     .join("");
+
+  adminLogList.querySelectorAll(".admin-log-details-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      button.closest(".admin-log-item")?.classList.toggle("is-open");
+    });
+  });
+
+  adminLogList.querySelectorAll(".restore-text-version").forEach((button) => {
+    button.addEventListener("click", () => restoreTextVersion(Number(button.dataset.logId)));
+  });
 }
 
 function renderAdminPermissions(admins) {
@@ -1271,8 +1428,25 @@ function renderAdminPermissions(admins) {
               Actif
             </label>
           </div>
+          ${
+            isOwner
+              ? ""
+              : `<select class="admin-role-select">
+                  <option value="admin" ${admin.role === "admin" ? "selected" : ""}>Admin</option>
+                  <option value="manager_roster" ${admin.role === "manager_roster" ? "selected" : ""}>Manager roster</option>
+                </select>`
+          }
           <div class="admin-permission-grid">${permissionInputs}</div>
-          ${isOwner ? "" : '<button class="button compact save-admin-permissions" type="button">Sauvegarder les permissions</button>'}
+          ${
+            isOwner
+              ? ""
+              : `<div class="admin-permission-actions">
+                  <button class="button compact save-admin-permissions" type="button">Sauvegarder</button>
+                  <button class="admin-small-action reset-admin-code" type="button">Changer code</button>
+                  <button class="admin-small-action force-admin-logout" type="button">Forcer deco</button>
+                  <button class="admin-small-action delete-admin-user" type="button">Supprimer</button>
+                </div>`
+          }
         </article>
       `;
     })
@@ -1280,6 +1454,15 @@ function renderAdminPermissions(admins) {
 
   adminPermissionsList.querySelectorAll(".save-admin-permissions").forEach((button) => {
     button.addEventListener("click", () => saveAdminPermissions(button.closest(".admin-permission-card")));
+  });
+  adminPermissionsList.querySelectorAll(".reset-admin-code").forEach((button) => {
+    button.addEventListener("click", () => resetAdminCode(button.closest(".admin-permission-card")));
+  });
+  adminPermissionsList.querySelectorAll(".force-admin-logout").forEach((button) => {
+    button.addEventListener("click", () => forceAdminLogout(button.closest(".admin-permission-card")));
+  });
+  adminPermissionsList.querySelectorAll(".delete-admin-user").forEach((button) => {
+    button.addEventListener("click", () => deleteAdminUser(button.closest(".admin-permission-card")));
   });
 }
 
@@ -1301,6 +1484,7 @@ async function saveAdminPermissions(card) {
     p_target_admin_name: card.dataset.adminName,
     p_permissions: permissions,
     p_is_active: card.querySelector("[data-active]")?.checked === true,
+    p_role: card.querySelector(".admin-role-select")?.value || null,
   });
 
   if (error) {
@@ -1310,6 +1494,294 @@ async function saveAdminPermissions(card) {
   }
 
   setSaveStatus("Permissions sauvegardees", "saved");
+  await loadAdminPanelData();
+}
+
+async function createAdminFromPanel(event) {
+  event.preventDefault();
+
+  const formData = new FormData(adminCreateForm);
+  const name = String(formData.get("admin-name") || "").trim();
+  const code = String(formData.get("admin-code") || "").trim();
+  const role = String(formData.get("admin-role") || "admin");
+
+  if (!name || !code) {
+    setSaveStatus("Nom et code requis", "error");
+    return;
+  }
+
+  const context = getAdminContext();
+  const permissions = role === "manager_roster"
+    ? { manage_members: true }
+    : {
+        edit_content: true,
+        manage_rosters: true,
+        manage_members: true,
+        view_history: false,
+        manage_permissions: false,
+        clear_history: false,
+      };
+
+  const { error } = await supabaseClient.rpc("create_site_admin_user", {
+    p_owner_name: context.name,
+    p_owner_code: context.code,
+    p_new_name: name,
+    p_new_code: code,
+    p_role: role,
+    p_permissions: permissions,
+  });
+
+  if (error) {
+    console.error("Creation admin impossible.", error);
+    setSaveStatus("Erreur creation admin", "error");
+    return;
+  }
+
+  adminCreateForm.reset();
+  setSaveStatus("Admin ajoute", "saved");
+  await loadAdminPanelData();
+}
+
+async function resetAdminCode(card) {
+  const newCode = window.prompt(`Nouveau code pour ${card?.dataset.adminName || "admin"} ?`);
+
+  if (!card || !newCode) {
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("reset_site_admin_code", {
+    p_owner_name: context.name,
+    p_owner_code: context.code,
+    p_target_admin_name: card.dataset.adminName,
+    p_new_code: newCode.trim(),
+  });
+
+  if (error) {
+    console.error("Reset code impossible.", error);
+    setSaveStatus("Erreur code admin", "error");
+    return;
+  }
+
+  setSaveStatus("Code admin change", "saved");
+  await loadAdminPanelData();
+}
+
+async function forceAdminLogout(card) {
+  if (!card || !window.confirm(`Forcer la deconnexion de ${card.dataset.adminName} ?`)) {
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("force_site_admin_logout", {
+    p_owner_name: context.name,
+    p_owner_code: context.code,
+    p_target_admin_name: card.dataset.adminName,
+  });
+
+  if (error) {
+    console.error("Deconnexion forcee impossible.", error);
+    setSaveStatus("Erreur deconnexion", "error");
+    return;
+  }
+
+  setSaveStatus("Deconnexion forcee", "saved");
+  await loadAdminPanelData();
+}
+
+async function deleteAdminUser(card) {
+  if (!card || !window.confirm(`Supprimer ${card.dataset.adminName} des admins ?`)) {
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("delete_site_admin_user", {
+    p_owner_name: context.name,
+    p_owner_code: context.code,
+    p_target_admin_name: card.dataset.adminName,
+  });
+
+  if (error) {
+    console.error("Suppression admin impossible.", error);
+    setSaveStatus("Erreur suppression admin", "error");
+    return;
+  }
+
+  setSaveStatus("Admin supprime", "saved");
+  await loadAdminPanelData();
+}
+
+async function createAnnouncementFromPanel(event) {
+  event.preventDefault();
+
+  const formData = new FormData(adminAnnouncementForm);
+  const title = String(formData.get("announcement-title") || "").trim();
+  const body = String(formData.get("announcement-body") || "").trim();
+
+  if (!title) {
+    setSaveStatus("Titre requis", "error");
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("create_internal_announcement", {
+    p_admin_name: context.name,
+    p_admin_code: context.code,
+    p_title: title,
+    p_body: body,
+  });
+
+  if (error) {
+    console.error("Annonce impossible.", error);
+    setSaveStatus("Erreur annonce", "error");
+    return;
+  }
+
+  adminAnnouncementForm.reset();
+  setSaveStatus("Annonce publiee", "saved");
+  await loadInternalAnnouncements();
+}
+
+async function loadInternalAnnouncements() {
+  const context = getAdminContext();
+  const { data, error } = await supabaseClient.rpc("get_internal_announcements", {
+    p_admin_name: context.name,
+    p_admin_code: context.code,
+  });
+
+  if (error) {
+    console.error("Annonces impossibles.", error);
+    if (adminAnnouncementList) {
+      adminAnnouncementList.innerHTML = "<p>Impossible de charger les annonces.</p>";
+    }
+    return;
+  }
+
+  if (!adminAnnouncementList) {
+    return;
+  }
+
+  adminAnnouncementList.innerHTML = (data || []).length
+    ? data
+        .map(
+          (item) => `
+            <article class="admin-announcement-item">
+              <strong>${escapeHtml(item.title)}</strong>
+              <p>${escapeHtml(item.body || "")}</p>
+              <span>${escapeHtml(item.created_by)} - ${escapeHtml(new Date(item.created_at).toLocaleString("fr-FR"))}</span>
+            </article>
+          `
+        )
+        .join("")
+    : "<p>Aucune annonce interne.</p>";
+}
+
+async function createContentBackup() {
+  const label = window.prompt("Nom du backup ?", `Backup ${new Date().toLocaleString("fr-FR")}`);
+
+  if (!label) {
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("create_site_content_backup", {
+    p_admin_name: context.name,
+    p_admin_code: context.code,
+    p_label: label.trim(),
+  });
+
+  if (error) {
+    console.error("Backup impossible.", error);
+    setSaveStatus("Erreur backup", "error");
+    return;
+  }
+
+  setSaveStatus("Backup cree", "saved");
+  await loadContentBackups();
+  await loadAdminPanelData();
+}
+
+async function loadContentBackups() {
+  const context = getAdminContext();
+  const { data, error } = await supabaseClient.rpc("get_site_content_backups", {
+    p_admin_name: context.name,
+    p_admin_code: context.code,
+  });
+
+  if (error) {
+    console.error("Backups impossibles.", error);
+    if (adminBackupList) {
+      adminBackupList.innerHTML = "<p>Impossible de charger les backups.</p>";
+    }
+    return;
+  }
+
+  if (!adminBackupList) {
+    return;
+  }
+
+  adminBackupList.innerHTML = (data || []).length
+    ? data
+        .map(
+          (backup) => `
+            <article class="admin-backup-item">
+              <strong>${escapeHtml(backup.label)}</strong>
+              <p>${escapeHtml(backup.created_by)} - ${escapeHtml(new Date(backup.created_at).toLocaleString("fr-FR"))}</p>
+              <button class="admin-small-action restore-backup" type="button" data-backup-id="${backup.id}">Restaurer</button>
+            </article>
+          `
+        )
+        .join("")
+    : "<p>Aucun backup.</p>";
+
+  adminBackupList.querySelectorAll(".restore-backup").forEach((button) => {
+    button.addEventListener("click", () => restoreContentBackup(Number(button.dataset.backupId)));
+  });
+}
+
+async function restoreContentBackup(backupId) {
+  if (!window.confirm("Restaurer ce backup de textes ?")) {
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("restore_site_content_backup", {
+    p_admin_name: context.name,
+    p_admin_code: context.code,
+    p_backup_id: backupId,
+  });
+
+  if (error) {
+    console.error("Restauration backup impossible.", error);
+    setSaveStatus("Erreur restauration", "error");
+    return;
+  }
+
+  setSaveStatus("Backup restaure", "saved");
+  await loadSupabaseContent();
+  await loadAdminPanelData();
+}
+
+async function restoreTextVersion(logId) {
+  if (!window.confirm("Restaurer cette ancienne version du texte ?")) {
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("restore_site_content_from_log", {
+    p_admin_name: context.name,
+    p_admin_code: context.code,
+    p_log_id: logId,
+  });
+
+  if (error) {
+    console.error("Restauration texte impossible.", error);
+    setSaveStatus("Erreur restauration", "error");
+    return;
+  }
+
+  setSaveStatus("Version restauree", "saved");
+  await loadSupabaseContent();
   await loadAdminPanelData();
 }
 
@@ -1371,9 +1843,47 @@ function formatAdminAction(action) {
     move_member: "Membre deplace",
     update_permissions: "Permissions modifiees",
     clear_history: "Historique vide",
+    create_admin: "Admin ajoute",
+    delete_admin: "Admin supprime",
+    reset_admin_code: "Code admin change",
+    force_logout: "Deconnexion forcee",
+    create_announcement: "Annonce interne",
+    create_backup: "Backup cree",
+    restore_backup: "Backup restaure",
+    restore_text_version: "Ancienne version restauree",
   };
 
   return labels[action] || action;
+}
+
+function getActionIcon(action) {
+  if (action.includes("member")) return "M";
+  if (action.includes("roster")) return "R";
+  if (action.includes("content") || action.includes("text")) return "T";
+  if (action.includes("permission") || action.includes("admin") || action.includes("logout")) return "A";
+  if (action.includes("backup") || action.includes("restore")) return "B";
+  if (action.includes("announcement")) return "N";
+  return "!";
+}
+
+function getLogTargetText(log) {
+  if (log.action === "move_member" && log.details?.sentence) {
+    return log.details.sentence;
+  }
+
+  return log.target || "-";
+}
+
+function formatLogDetails(log) {
+  if (log.action === "edit_content") {
+    return `Avant: ${log.details?.before || ""}\nApres: ${log.details?.after || ""}`;
+  }
+
+  if (log.action === "move_member" && log.details?.sentence) {
+    return log.details.sentence;
+  }
+
+  return JSON.stringify(log.details || {}, null, 2);
 }
 
 function escapeHtml(value) {

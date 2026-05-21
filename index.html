@@ -54,6 +54,7 @@
           <a href="#objectifs">Objectifs</a>
           <a href="#recrutement">Recrutement</a>
           <a href="#membres">Membre</a>
+          <a href="#staff">Staff</a>
           <a href="#faq">FAQ</a>
           <button class="admin-nav-button" type="button">Admin</button>
         </nav>
@@ -246,6 +247,14 @@
           </div>
         </section>
 
+        <section class="section staff-section" id="staff" data-static>
+          <div class="section-heading">
+            <p class="eyebrow">Staff</p>
+            <h2>L'equipe qui gere Vortex.</h2>
+          </div>
+          <div class="staff-grid" aria-live="polite"></div>
+        </section>
+
         <section class="section faq" id="faq">
           <div class="section-heading">
             <p class="eyebrow">Questions</p>
@@ -324,12 +333,47 @@
             <h3>Permissions</h3>
             <p>Seul le owner peut modifier les droits des admins.</p>
           </div>
+          <form class="admin-create-form">
+            <input name="admin-name" type="text" placeholder="Nom admin" />
+            <input name="admin-code" type="text" placeholder="Nouveau code" />
+            <select name="admin-role">
+              <option value="admin">Admin</option>
+              <option value="manager_roster">Manager roster</option>
+            </select>
+            <button class="button compact" type="submit">Ajouter admin</button>
+          </form>
           <div class="admin-permissions-list"></div>
+        </div>
+        <div class="admin-panel-section admin-announcements-section" hidden>
+          <div class="admin-panel-heading">
+            <h3>Annonces internes</h3>
+            <p>Messages visibles dans le panel admin.</p>
+          </div>
+          <form class="admin-announcement-form">
+            <input name="announcement-title" type="text" placeholder="Titre" />
+            <input name="announcement-body" type="text" placeholder="Message interne" />
+            <button class="button compact" type="submit">Publier</button>
+          </form>
+          <div class="admin-announcement-list"></div>
+        </div>
+        <div class="admin-panel-section admin-backups-section" hidden>
+          <div class="admin-panel-heading">
+            <h3>Backups textes</h3>
+            <button class="admin-create-backup" type="button">Créer un backup</button>
+          </div>
+          <div class="admin-backup-list"></div>
         </div>
         <div class="admin-panel-section">
           <div class="admin-panel-heading">
             <h3>Historique</h3>
-            <button class="admin-clear-history" type="button" hidden>Vider l'historique</button>
+            <div class="admin-log-tools">
+              <select class="admin-log-filter">
+                <option value="all">Tout</option>
+                <option value="today">Aujourd'hui</option>
+                <option value="7days">7 jours</option>
+              </select>
+              <button class="admin-clear-history" type="button" hidden>Vider l'historique</button>
+            </div>
           </div>
           <div class="admin-log-list"></div>
         </div>
@@ -342,7 +386,6 @@
       <span class="admin-counts">0 roster - 0 membre</span>
       <button type="button" class="admin-panel-open">Panel</button>
       <button type="button" class="admin-scroll-top">Haut</button>
-      <button type="button" class="admin-reset">Reinitialiser les textes</button>
       <button type="button" class="admin-logout">Quitter</button>
     </div>
 

@@ -50,10 +50,12 @@ const PERMISSION_LABELS = {
   edit_content: "Modifier les textes",
   manage_rosters: "Gerer les rosters",
   manage_members: "Gerer les membres",
+  move_members: "Deplacer les membres",
   view_history: "Voir l'historique",
   manage_permissions: "Gerer les permissions",
   clear_history: "Vider l'historique",
   manage_admins: "Gerer les admins",
+  manage_roster_managers: "Gerer responsables roster",
   manage_announcements: "Annonces internes",
   manage_backups: "Backups/restauration",
   manage_staff: "Gerer le staff",
@@ -699,6 +701,9 @@ function readAdminPermissions() {
 
 function hasPermission(permission) {
   const context = getAdminContext();
+  if (context.role === "manager_roster" && permission === "move_members") {
+    return true;
+  }
   return context.role === "owner" || context.permissions[permission] === true;
 }
 
@@ -876,6 +881,7 @@ function renderRosters() {
 
   const sortedRosters = [...rosters].sort(sortByOrderThenName);
   const canManageMembers = hasPermission("manage_members");
+  const canMoveMembers = canManageMembers || hasPermission("move_members");
   const canManageRosters = hasPermission("manage_rosters");
 
   sortedRosters.forEach((roster) => {
@@ -884,7 +890,7 @@ function renderRosters() {
     column.dataset.rosterId = roster.id;
 
     column.addEventListener("dragover", (event) => {
-      if (!isAdminActive() || !hasPermission("manage_members") || draggedMemberId === null) {
+      if (!isAdminActive() || !canMoveMembers || draggedMemberId === null) {
         return;
       }
 
@@ -900,7 +906,7 @@ function renderRosters() {
       event.preventDefault();
       column.classList.remove("is-drop-target");
 
-      if (!isAdminActive() || !hasPermission("manage_members") || draggedMemberId === null) {
+      if (!isAdminActive() || !canMoveMembers || draggedMemberId === null) {
         return;
       }
 
@@ -953,9 +959,10 @@ function renderRosters() {
 
 function createMemberCard(member, roster) {
   const canManageMembers = hasPermission("manage_members");
+  const canMoveMembers = canManageMembers || hasPermission("move_members");
   const card = document.createElement("article");
   card.className = "member-card";
-  card.draggable = isAdminActive() && canManageMembers;
+  card.draggable = isAdminActive() && canMoveMembers;
   card.dataset.memberId = member.id;
   card.style.borderLeftColor = roster.color || "#4cb8ff";
 
@@ -974,7 +981,7 @@ function createMemberCard(member, roster) {
   `;
 
   card.addEventListener("dragstart", (event) => {
-    if (!isAdminActive() || !canManageMembers) {
+    if (!isAdminActive() || !canMoveMembers) {
       event.preventDefault();
       return;
     }
@@ -1137,7 +1144,7 @@ async function deleteMember(memberId) {
 
   const adminContext = getAdminCodeOrStop();
 
-  if (!adminContext || !supabaseClient || !hasPermission("manage_members")) {
+  if (!adminContext || !supabaseClient || !(hasPermission("manage_members") || hasPermission("move_members"))) {
     return;
   }
 
@@ -1245,7 +1252,13 @@ function renderAdminPanelBase() {
   }
 
   if (adminPermissionsSection) {
-    adminPermissionsSection.hidden = !hasPermission("manage_permissions");
+    adminPermissionsSection.hidden = !(hasPermission("manage_permissions") || hasPermission("manage_roster_managers"));
+  }
+
+  const roleSelect = adminCreateForm?.querySelector('[name="admin-role"]');
+  if (roleSelect) {
+    roleSelect.value = hasPermission("manage_admins") ? roleSelect.value : "manager_roster";
+    roleSelect.disabled = !hasPermission("manage_admins");
   }
 
   if (adminAnnouncementsSection) {
@@ -1360,10 +1373,11 @@ function renderAdminPermissions(admins) {
   adminPermissionsList.innerHTML = admins
     .map((admin) => {
       const isOwner = admin.role === "owner";
+      const fullPermissionEdit = hasPermission("manage_permissions");
       const permissionInputs = Object.entries(PERMISSION_LABELS)
         .map(([key, label]) => {
           const checked = admin.role === "owner" || admin.permissions?.[key] === true ? "checked" : "";
-          const disabled = isOwner ? "disabled" : "";
+          const disabled = isOwner || !fullPermissionEdit ? "disabled" : "";
           return `
             <label>
               <input type="checkbox" data-permission="${escapeHtml(key)}" ${checked} ${disabled} />
@@ -1385,7 +1399,7 @@ function renderAdminPermissions(admins) {
           ${
             isOwner
               ? ""
-              : `<select class="admin-role-select">
+              : `<select class="admin-role-select" ${fullPermissionEdit ? "" : "disabled"}>
                   <option value="admin" ${admin.role === "admin" ? "selected" : ""}>Admin</option>
                   <option value="manager_roster" ${admin.role === "manager_roster" ? "selected" : ""}>Manager roster</option>
                 </select>`
@@ -1457,7 +1471,8 @@ async function createAdminFromPanel(event) {
   const formData = new FormData(adminCreateForm);
   const name = String(formData.get("admin-name") || "").trim();
   const code = String(formData.get("admin-code") || "").trim();
-  const role = String(formData.get("admin-role") || "admin");
+  const requestedRole = String(formData.get("admin-role") || "admin");
+  const role = hasPermission("manage_admins") ? requestedRole : "manager_roster";
 
   if (!name || !code) {
     setSaveStatus("Nom et code requis", "error");
@@ -1466,7 +1481,7 @@ async function createAdminFromPanel(event) {
 
   const context = getAdminContext();
   const permissions = role === "manager_roster"
-    ? { manage_members: true }
+    ? { move_members: true }
     : {
         edit_content: true,
         manage_rosters: true,

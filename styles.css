@@ -1088,8 +1088,10 @@ p {
   overflow: auto;
   border: 1px solid rgba(125, 227, 255, 0.28);
   border-radius: var(--radius);
-  padding: 24px;
-  background: #142235;
+  padding: 30px;
+  background:
+    linear-gradient(180deg, rgba(125, 227, 255, 0.08), transparent 180px),
+    #142235;
   box-shadow: var(--shadow);
 }
 
@@ -1112,8 +1114,8 @@ p {
 .admin-panel-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 18px 0;
+  gap: 12px;
+  margin: 22px 0;
 }
 
 .admin-panel-summary span,
@@ -1125,13 +1127,17 @@ p {
 }
 
 .admin-panel-summary span {
-  padding: 12px;
+  padding: 14px;
   color: #d7e7f6;
   font-weight: 900;
 }
 
 .admin-panel-section {
-  margin-top: 22px;
+  margin-top: 24px;
+  border: 1px solid rgba(160, 195, 225, 0.14);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: rgba(15, 27, 42, 0.34);
 }
 
 .admin-panel-heading {
@@ -1139,7 +1145,7 @@ p {
   align-items: end;
   justify-content: space-between;
   gap: 14px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .admin-log-tools {

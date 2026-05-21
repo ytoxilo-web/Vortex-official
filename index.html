@@ -59,6 +59,8 @@
         </nav>
       </header>
 
+      <div class="public-banner-zone" data-static aria-live="polite"></div>
+
       <main>
         <section class="hero">
           <div class="hero-bg" aria-hidden="true">
@@ -339,15 +341,15 @@
         </div>
         <div class="admin-panel-section admin-announcements-section" hidden>
           <div class="admin-panel-heading">
-            <h3>Annonces internes</h3>
-            <p>Messages visibles dans le panel admin.</p>
+            <h3>Bandelettes publiques</h3>
+            <p>Messages visibles par tout le monde sous la navigation.</p>
           </div>
-          <form class="admin-announcement-form">
-            <input name="announcement-title" type="text" placeholder="Titre" />
-            <input name="announcement-body" type="text" placeholder="Message interne" />
+          <form class="admin-banner-form">
+            <input name="banner-title" type="text" placeholder="Ex : Maintenance dans 1 jour" />
+            <input name="banner-color" type="color" value="#ffc857" aria-label="Couleur de la bandelette" />
             <button class="button compact" type="submit">📣 Publier</button>
           </form>
-          <div class="admin-announcement-list"></div>
+          <div class="admin-banner-list"></div>
         </div>
         <div class="admin-panel-section admin-backups-section" hidden>
           <div class="admin-panel-heading">

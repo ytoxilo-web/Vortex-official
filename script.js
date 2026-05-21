@@ -20,8 +20,8 @@ const adminPermissionsSection = document.querySelector(".admin-permissions-secti
 const adminPermissionsList = document.querySelector(".admin-permissions-list");
 const adminCreateForm = document.querySelector(".admin-create-form");
 const adminAnnouncementsSection = document.querySelector(".admin-announcements-section");
-const adminAnnouncementForm = document.querySelector(".admin-announcement-form");
-const adminAnnouncementList = document.querySelector(".admin-announcement-list");
+const adminBannerForm = document.querySelector(".admin-banner-form");
+const adminBannerList = document.querySelector(".admin-banner-list");
 const adminBackupsSection = document.querySelector(".admin-backups-section");
 const adminCreateBackup = document.querySelector(".admin-create-backup");
 const adminBackupList = document.querySelector(".admin-backup-list");
@@ -35,6 +35,7 @@ const adminScrollTop = document.querySelector(".admin-scroll-top");
 const adminLogout = document.querySelector(".admin-logout");
 const rosterBoard = document.querySelector(".roster-board");
 const customSections = document.querySelector(".custom-sections");
+const publicBannerZone = document.querySelector(".public-banner-zone");
 const memberAdminPanel = document.querySelector(".member-admin-panel");
 const addRosterButton = document.querySelector(".add-roster-button");
 const memberForm = document.querySelector(".member-form");
@@ -146,6 +147,7 @@ const supabaseClient = createSupabaseClient();
 let rosters = [];
 let members = [];
 let siteSections = [];
+let publicBanners = [];
 let draggedMemberId = null;
 let saveStatusTimer = null;
 let pendingAdminCode = "";
@@ -206,6 +208,7 @@ loadSupabaseContent();
 loadCachedRosters();
 loadRosterData();
 loadSiteSections();
+loadPublicBanners();
 subscribeToContentChanges();
 subscribeToRosterChanges();
 initRevealAnimation();
@@ -293,8 +296,8 @@ if (adminCreateForm) {
   adminCreateForm.addEventListener("submit", createAdminFromPanel);
 }
 
-if (adminAnnouncementForm) {
-  adminAnnouncementForm.addEventListener("submit", createAnnouncementFromPanel);
+if (adminBannerForm) {
+  adminBannerForm.addEventListener("submit", createPublicBannerFromPanel);
 }
 
 if (adminCreateBackup) {
@@ -914,6 +917,81 @@ async function loadSiteSections() {
   renderAdminSections();
 }
 
+async function loadPublicBanners() {
+  if (!supabaseClient) {
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("site_public_banners")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Impossible de charger les bandelettes.", error);
+    return;
+  }
+
+  publicBanners = data || [];
+  renderPublicBanners();
+  renderAdminBanners();
+}
+
+function renderPublicBanners() {
+  if (!publicBannerZone) {
+    return;
+  }
+
+  const activeBanners = publicBanners.filter((banner) => banner.is_active);
+
+  publicBannerZone.innerHTML = activeBanners
+    .map(
+      (banner) => `
+        <div class="public-banner" style="--banner-color:${escapeHtml(banner.color || "#ffc857")}">
+          <strong>${escapeHtml(banner.title)}</strong>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderAdminBanners() {
+  if (!adminBannerList || !hasPermission("manage_announcements")) {
+    return;
+  }
+
+  if (publicBanners.length === 0) {
+    adminBannerList.innerHTML = "<p>Aucune bandelette publique.</p>";
+    return;
+  }
+
+  adminBannerList.innerHTML = publicBanners
+    .map(
+      (banner) => `
+        <article class="admin-banner-item" data-banner-id="${banner.id}">
+          <input class="admin-banner-title" type="text" value="${escapeHtml(banner.title)}" />
+          <input class="admin-banner-color" type="color" value="${escapeHtml(banner.color || "#ffc857")}" />
+          <label>
+            <input class="admin-banner-active" type="checkbox" ${banner.is_active ? "checked" : ""} />
+            Visible
+          </label>
+          <div class="admin-banner-actions">
+            <button class="admin-small-action save-banner" type="button">✅ Sauvegarder</button>
+            <button class="admin-small-action delete-banner" type="button">❌ Supprimer</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+
+  adminBannerList.querySelectorAll(".save-banner").forEach((button) => {
+    button.addEventListener("click", () => savePublicBanner(button.closest(".admin-banner-item")));
+  });
+  adminBannerList.querySelectorAll(".delete-banner").forEach((button) => {
+    button.addEventListener("click", () => deletePublicBanner(button.closest(".admin-banner-item")));
+  });
+}
+
 function applySectionVisibility() {
   document.querySelectorAll("[data-section-key]").forEach((element) => {
     const section = siteSections.find((item) => item.section_key === element.dataset.sectionKey);
@@ -1444,7 +1522,7 @@ async function loadAdminPanelData() {
   }
 
   if (hasPermission("manage_announcements")) {
-    await loadInternalAnnouncements();
+    renderAdminBanners();
   }
 
   if (hasPermission("manage_backups")) {
@@ -1830,12 +1908,12 @@ async function deleteAdminUser(card) {
   await loadAdminPanelData();
 }
 
-async function createAnnouncementFromPanel(event) {
+async function createPublicBannerFromPanel(event) {
   event.preventDefault();
 
-  const formData = new FormData(adminAnnouncementForm);
-  const title = String(formData.get("announcement-title") || "").trim();
-  const body = String(formData.get("announcement-body") || "").trim();
+  const formData = new FormData(adminBannerForm);
+  const title = String(formData.get("banner-title") || "").trim();
+  const color = String(formData.get("banner-color") || "#ffc857").trim();
 
   if (!title) {
     setSaveStatus("Titre requis", "error");
@@ -1843,56 +1921,72 @@ async function createAnnouncementFromPanel(event) {
   }
 
   const context = getAdminContext();
-  const { error } = await supabaseClient.rpc("create_internal_announcement", {
+  const { error } = await supabaseClient.rpc("create_public_banner", {
     p_admin_name: context.name,
     p_admin_code: context.code,
     p_title: title,
-    p_body: body,
+    p_color: color,
   });
 
   if (error) {
-    console.error("Annonce impossible.", error);
-    setSaveStatus("Erreur annonce", "error");
+    console.error("Bandelette impossible.", error);
+    setSaveStatus("Erreur bandelette", "error");
     return;
   }
 
-  adminAnnouncementForm.reset();
-  setSaveStatus("Annonce publiee", "saved");
-  await loadInternalAnnouncements();
+  adminBannerForm.reset();
+  setSaveStatus("Bandelette publiee", "saved");
+  await loadPublicBanners();
+  await loadAdminPanelData();
 }
 
-async function loadInternalAnnouncements() {
+async function savePublicBanner(card) {
+  if (!card) {
+    return;
+  }
+
   const context = getAdminContext();
-  const { data, error } = await supabaseClient.rpc("get_internal_announcements", {
+  const { error } = await supabaseClient.rpc("update_public_banner", {
     p_admin_name: context.name,
     p_admin_code: context.code,
+    p_id: Number(card.dataset.bannerId),
+    p_title: card.querySelector(".admin-banner-title")?.value.trim() || "",
+    p_color: card.querySelector(".admin-banner-color")?.value || "#ffc857",
+    p_is_active: card.querySelector(".admin-banner-active")?.checked === true,
   });
 
   if (error) {
-    console.error("Annonces impossibles.", error);
-    if (adminAnnouncementList) {
-      adminAnnouncementList.innerHTML = "<p>Impossible de charger les annonces.</p>";
-    }
+    console.error("Sauvegarde bandelette impossible.", error);
+    setSaveStatus("Erreur bandelette", "error");
     return;
   }
 
-  if (!adminAnnouncementList) {
+  setSaveStatus("Bandelette sauvegardee", "saved");
+  await loadPublicBanners();
+  await loadAdminPanelData();
+}
+
+async function deletePublicBanner(card) {
+  if (!card || !window.confirm("Supprimer cette bandelette ?")) {
     return;
   }
 
-  adminAnnouncementList.innerHTML = (data || []).length
-    ? data
-        .map(
-          (item) => `
-            <article class="admin-announcement-item">
-              <strong>${escapeHtml(item.title)}</strong>
-              <p>${escapeHtml(item.body || "")}</p>
-              <span>${escapeHtml(item.created_by)} - ${escapeHtml(new Date(item.created_at).toLocaleString("fr-FR"))}</span>
-            </article>
-          `
-        )
-        .join("")
-    : "<p>Aucune annonce interne.</p>";
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("delete_public_banner", {
+    p_admin_name: context.name,
+    p_admin_code: context.code,
+    p_id: Number(card.dataset.bannerId),
+  });
+
+  if (error) {
+    console.error("Suppression bandelette impossible.", error);
+    setSaveStatus("Erreur suppression", "error");
+    return;
+  }
+
+  setSaveStatus("Bandelette supprimee", "saved");
+  await loadPublicBanners();
+  await loadAdminPanelData();
 }
 
 async function createContentBackup() {
@@ -2067,6 +2161,9 @@ function formatAdminAction(action) {
     reset_admin_code: "🔑 Code admin change",
     force_logout: "🚪 Deconnexion forcee",
     create_announcement: "📣 Annonce interne",
+    create_public_banner: "📣 Bandelette creee",
+    update_public_banner: "📣 Bandelette modifiee",
+    delete_public_banner: "❌ Bandelette supprimee",
     create_backup: "💾 Backup cree",
     restore_backup: "↩️ Backup restaure",
     restore_text_version: "↩️ Ancienne version restauree",

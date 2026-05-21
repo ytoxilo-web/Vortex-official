@@ -47,19 +47,19 @@ const ADMIN_PERMISSIONS_SESSION_KEY = "vortex-admin-permissions";
 const ADMIN_SESSION_VERSION_KEY = "vortex-admin-session-version";
 const SAVE_DELAY = 450;
 const PERMISSION_LABELS = {
-  edit_content: "Modifier les textes",
-  manage_rosters: "Gerer les rosters",
-  manage_members: "Gerer les membres",
-  move_members: "Deplacer les membres",
-  view_history: "Voir l'historique",
-  manage_permissions: "Gerer les permissions",
-  clear_history: "Vider l'historique",
-  manage_admins: "Gerer les admins",
-  manage_roster_managers: "Gerer responsables roster",
-  manage_announcements: "Annonces internes",
-  manage_backups: "Backups/restauration",
-  manage_staff: "Gerer le staff",
-  force_logout: "Forcer deconnexion",
+  edit_content: "✏️ Modifier les textes",
+  manage_rosters: "📋 Gerer les rosters",
+  manage_members: "👤 Gerer les membres",
+  move_members: "➡️ Deplacer les membres",
+  view_history: "🕒 Voir l'historique",
+  manage_permissions: "🔐 Gerer les permissions",
+  clear_history: "🧹 Vider l'historique",
+  manage_admins: "🛡️ Gerer les admins",
+  manage_roster_managers: "🎯 Gerer responsables roster",
+  manage_announcements: "📣 Annonces internes",
+  manage_backups: "💾 Backups/restauration",
+  manage_staff: "⭐ Gerer le staff",
+  force_logout: "🚪 Forcer deconnexion",
 };
 
 const CONTENT_KEYS = [
@@ -744,7 +744,7 @@ function setSaveStatus(message, state = "idle") {
   }
 
   clearTimeout(saveStatusTimer);
-  adminSaveStatus.textContent = message;
+  adminSaveStatus.textContent = formatAdminStatus(message, state);
   adminSaveStatus.classList.remove("is-saving", "is-saved", "is-error");
 
   if (state !== "idle") {
@@ -753,10 +753,21 @@ function setSaveStatus(message, state = "idle") {
 
   if (state === "saved") {
     saveStatusTimer = setTimeout(() => {
-      adminSaveStatus.textContent = "Pret";
+      adminSaveStatus.textContent = formatAdminStatus("Pret", "idle");
       adminSaveStatus.classList.remove("is-saved");
     }, 2200);
   }
+}
+
+function formatAdminStatus(message, state) {
+  const icons = {
+    idle: "⚪",
+    saving: "🟡",
+    saved: "✅",
+    error: "❌",
+  };
+
+  return `${icons[state] || icons.idle} ${message}`;
 }
 
 function updateAdminCounts() {
@@ -1339,7 +1350,7 @@ function renderAdminLogs(logs) {
       const detailText = formatLogDetails(log);
       const restoreButton =
         hasPermission("manage_backups") && log.action === "edit_content" && log.details?.before !== null
-          ? `<button class="admin-small-action restore-text-version" type="button" data-log-id="${log.id}">Restaurer</button>`
+          ? `<button class="admin-small-action restore-text-version" type="button" data-log-id="${log.id}">↩️ Restaurer</button>`
           : "";
       return `
         <article class="admin-log-item">
@@ -1347,7 +1358,7 @@ function renderAdminLogs(logs) {
           <strong>${escapeHtml(log.admin_name)}</strong>
           <span>${escapeHtml(formatAdminAction(log.action))} - ${escapeHtml(getLogTargetText(log))}</span>
           <time datetime="${escapeHtml(log.created_at)}">${escapeHtml(date.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "medium" }))}</time>
-          <button class="admin-log-details-button" type="button">Details</button>
+          <button class="admin-log-details-button" type="button">🔎 Details</button>
           <div class="admin-log-details">${escapeHtml(detailText)}${restoreButton}</div>
         </article>
       `;
@@ -1409,10 +1420,10 @@ function renderAdminPermissions(admins) {
             isOwner
               ? ""
               : `<div class="admin-permission-actions">
-                  <button class="button compact save-admin-permissions" type="button">Sauvegarder</button>
-                  <button class="admin-small-action reset-admin-code" type="button">Changer code</button>
-                  <button class="admin-small-action force-admin-logout" type="button">Forcer deco</button>
-                  <button class="admin-small-action delete-admin-user" type="button">Supprimer</button>
+                  <button class="button compact save-admin-permissions" type="button">✅ Sauvegarder</button>
+                  <button class="admin-small-action reset-admin-code" type="button">🔑 Changer code</button>
+                  <button class="admin-small-action force-admin-logout" type="button">🚪 Forcer deco</button>
+                  <button class="admin-small-action delete-admin-user" type="button">❌ Supprimer</button>
                 </div>`
           }
         </article>
@@ -1696,7 +1707,7 @@ async function loadContentBackups() {
             <article class="admin-backup-item">
               <strong>${escapeHtml(backup.label)}</strong>
               <p>${escapeHtml(backup.created_by)} - ${escapeHtml(new Date(backup.created_at).toLocaleString("fr-FR"))}</p>
-              <button class="admin-small-action restore-backup" type="button" data-backup-id="${backup.id}">Restaurer</button>
+              <button class="admin-small-action restore-backup" type="button" data-backup-id="${backup.id}">↩️ Restaurer</button>
             </article>
           `
         )
@@ -1802,37 +1813,38 @@ function sortByOrderThenName(a, b) {
 
 function formatAdminAction(action) {
   const labels = {
-    edit_content: "Texte modifie",
-    create_roster: "Roster cree",
-    edit_roster: "Roster modifie",
-    delete_roster: "Roster supprime",
-    create_member: "Membre ajoute",
-    edit_member: "Membre modifie",
-    delete_member: "Membre supprime",
-    move_member: "Membre deplace",
-    update_permissions: "Permissions modifiees",
-    clear_history: "Historique vide",
-    create_admin: "Admin ajoute",
-    delete_admin: "Admin supprime",
-    reset_admin_code: "Code admin change",
-    force_logout: "Deconnexion forcee",
-    create_announcement: "Annonce interne",
-    create_backup: "Backup cree",
-    restore_backup: "Backup restaure",
-    restore_text_version: "Ancienne version restauree",
+    edit_content: "✏️ Texte modifie",
+    create_roster: "➕ Roster cree",
+    edit_roster: "📋 Roster modifie",
+    delete_roster: "❌ Roster supprime",
+    create_member: "✅ Membre ajoute",
+    edit_member: "👤 Membre modifie",
+    delete_member: "❌ Membre supprime",
+    move_member: "➡️ Membre deplace",
+    update_permissions: "🔐 Permissions modifiees",
+    clear_history: "🧹 Historique vide",
+    create_admin: "🛡️ Admin ajoute",
+    delete_admin: "❌ Admin supprime",
+    reset_admin_code: "🔑 Code admin change",
+    force_logout: "🚪 Deconnexion forcee",
+    create_announcement: "📣 Annonce interne",
+    create_backup: "💾 Backup cree",
+    restore_backup: "↩️ Backup restaure",
+    restore_text_version: "↩️ Ancienne version restauree",
   };
 
   return labels[action] || action;
 }
 
 function getActionIcon(action) {
-  if (action.includes("member")) return "M";
-  if (action.includes("roster")) return "R";
-  if (action.includes("content") || action.includes("text")) return "T";
-  if (action.includes("permission") || action.includes("admin") || action.includes("logout")) return "A";
-  if (action.includes("backup") || action.includes("restore")) return "B";
-  if (action.includes("announcement")) return "N";
-  return "!";
+  if (action.includes("delete")) return "❌";
+  if (action.includes("create")) return "✅";
+  if (action.includes("move")) return "➡️";
+  if (action.includes("permission") || action.includes("admin") || action.includes("logout")) return "🔐";
+  if (action.includes("backup") || action.includes("restore")) return "↩️";
+  if (action.includes("announcement")) return "📣";
+  if (action.includes("content") || action.includes("text")) return "✏️";
+  return "•";
 }
 
 function getLogTargetText(log) {

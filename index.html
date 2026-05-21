@@ -301,12 +301,47 @@
           />
           <button class="button primary" type="submit">Valider</button>
         </form>
+        <div class="admin-identity-step" hidden>
+          <p>Quel admin es-tu ?</p>
+          <div class="admin-identity-buttons">
+            <button type="button" data-admin-name="Ayoub">Ayoub</button>
+            <button type="button" data-admin-name="Malo">Malo</button>
+            <button type="button" data-admin-name="Quentin">Quentin</button>
+          </div>
+        </div>
         <p class="admin-error" role="alert"></p>
       </div>
     </div>
 
+    <div class="admin-panel-modal" aria-hidden="true">
+      <div class="admin-panel-card" role="dialog" aria-modal="true" aria-labelledby="admin-panel-title">
+        <button class="admin-panel-close" type="button" aria-label="Fermer le panel">&times;</button>
+        <p class="eyebrow">Administration</p>
+        <h2 id="admin-panel-title">Panel admin</h2>
+        <div class="admin-panel-summary"></div>
+        <div class="admin-panel-section admin-permissions-section" hidden>
+          <div class="admin-panel-heading">
+            <h3>Permissions</h3>
+            <p>Seul le owner peut modifier les droits des admins.</p>
+          </div>
+          <div class="admin-permissions-list"></div>
+        </div>
+        <div class="admin-panel-section">
+          <div class="admin-panel-heading">
+            <h3>Historique</h3>
+            <button class="admin-clear-history" type="button" hidden>Vider l'historique</button>
+          </div>
+          <div class="admin-log-list"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="admin-toolbar" hidden>
-      <span>Mode admin actif</span>
+      <span class="admin-mode-label">Mode admin actif</span>
+      <span class="admin-save-status" aria-live="polite">Pret</span>
+      <span class="admin-counts">0 roster - 0 membre</span>
+      <button type="button" class="admin-panel-open">Panel</button>
+      <button type="button" class="admin-scroll-top">Haut</button>
       <button type="button" class="admin-reset">Reinitialiser les textes</button>
       <button type="button" class="admin-logout">Quitter</button>
     </div>

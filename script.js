@@ -6,9 +6,21 @@ const adminButton = document.querySelector(".admin-nav-button");
 const adminModal = document.querySelector(".admin-modal");
 const adminClose = document.querySelector(".admin-close");
 const adminForm = document.querySelector(".admin-form");
+const adminIdentityStep = document.querySelector(".admin-identity-step");
 const adminCodeInput = document.querySelector("#admin-code");
 const adminError = document.querySelector(".admin-error");
 const adminToolbar = document.querySelector(".admin-toolbar");
+const adminSaveStatus = document.querySelector(".admin-save-status");
+const adminCounts = document.querySelector(".admin-counts");
+const adminPanelOpen = document.querySelector(".admin-panel-open");
+const adminPanelModal = document.querySelector(".admin-panel-modal");
+const adminPanelClose = document.querySelector(".admin-panel-close");
+const adminPanelSummary = document.querySelector(".admin-panel-summary");
+const adminPermissionsSection = document.querySelector(".admin-permissions-section");
+const adminPermissionsList = document.querySelector(".admin-permissions-list");
+const adminLogList = document.querySelector(".admin-log-list");
+const adminClearHistory = document.querySelector(".admin-clear-history");
+const adminScrollTop = document.querySelector(".admin-scroll-top");
 const adminLogout = document.querySelector(".admin-logout");
 const adminReset = document.querySelector(".admin-reset");
 const rosterBoard = document.querySelector(".roster-board");
@@ -22,7 +34,18 @@ const CACHE_KEY = "vortex-site-content-cache";
 const ROSTER_CACHE_KEY = "vortex-roster-cache";
 const ADMIN_SESSION_KEY = "vortex-admin-active";
 const ADMIN_CODE_SESSION_KEY = "vortex-admin-code";
+const ADMIN_NAME_SESSION_KEY = "vortex-admin-name";
+const ADMIN_ROLE_SESSION_KEY = "vortex-admin-role";
+const ADMIN_PERMISSIONS_SESSION_KEY = "vortex-admin-permissions";
 const SAVE_DELAY = 450;
+const PERMISSION_LABELS = {
+  edit_content: "Modifier les textes",
+  manage_rosters: "Gerer les rosters",
+  manage_members: "Gerer les membres",
+  view_history: "Voir l'historique",
+  manage_permissions: "Gerer les permissions",
+  clear_history: "Vider l'historique",
+};
 
 const CONTENT_KEYS = [
   "hero_eyebrow",
@@ -103,6 +126,8 @@ const supabaseClient = createSupabaseClient();
 let rosters = [];
 let members = [];
 let draggedMemberId = null;
+let saveStatusTimer = null;
+let pendingAdminCode = "";
 
 if (navToggle && nav) {
   navToggle.addEventListener("click", () => {
@@ -197,18 +222,30 @@ if (adminForm) {
       return;
     }
 
-    const adminCode = adminCodeInput.value.trim();
-    const isValid = await verifyAdminCode(adminCode);
+    pendingAdminCode = adminCodeInput.value.trim();
+    showAdminError("");
 
-    if (!isValid) {
-      showAdminError("Code incorrect.");
-      return;
+    if (adminIdentityStep) {
+      adminIdentityStep.hidden = false;
     }
+  });
+}
 
-    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
-    sessionStorage.setItem(ADMIN_CODE_SESSION_KEY, adminCode);
-    closeAdminModal();
-    enableAdminMode();
+if (adminIdentityStep) {
+  adminIdentityStep.querySelectorAll("[data-admin-name]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const adminName = button.dataset.adminName || "";
+      const session = await verifyAdminIdentity(adminName, pendingAdminCode);
+
+      if (!session) {
+        showAdminError("Code incorrect pour cet admin.");
+        return;
+      }
+
+      storeAdminSession(session, pendingAdminCode);
+      closeAdminModal();
+      enableAdminMode();
+    });
   });
 }
 
@@ -216,9 +253,53 @@ if (adminLogout) {
   adminLogout.addEventListener("click", () => {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     sessionStorage.removeItem(ADMIN_CODE_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_NAME_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_ROLE_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_PERMISSIONS_SESSION_KEY);
     disableAdminMode();
   });
 }
+
+if (adminPanelOpen) {
+  adminPanelOpen.addEventListener("click", openAdminPanel);
+}
+
+if (adminPanelClose) {
+  adminPanelClose.addEventListener("click", closeAdminPanel);
+}
+
+if (adminPanelModal) {
+  adminPanelModal.addEventListener("click", (event) => {
+    if (event.target === adminPanelModal) {
+      closeAdminPanel();
+    }
+  });
+}
+
+if (adminClearHistory) {
+  adminClearHistory.addEventListener("click", clearAdminHistory);
+}
+
+if (adminScrollTop) {
+  adminScrollTop.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
+
+document.addEventListener("keydown", (event) => {
+  if (!event.ctrlKey || !event.shiftKey || event.key.toLowerCase() !== "a") {
+    return;
+  }
+
+  const adminContext = getAdminContext();
+  if (!adminContext.code || !adminContext.name) {
+    return;
+  }
+
+  event.preventDefault();
+  closeWelcomeScreen();
+  enableAdminMode();
+});
 
 if (adminReset) {
   adminReset.addEventListener("click", () => {
@@ -330,6 +411,7 @@ function queueContentSave(contentKey, value) {
   const cachedContent = readContentCache();
   cachedContent[contentKey] = value;
   writeContentCache(cachedContent);
+  setSaveStatus("Sauvegarde...", "saving");
 
   clearTimeout(saveTimers.get(contentKey));
   saveTimers.set(
@@ -346,27 +428,36 @@ async function saveContentToSupabase(contentKey, value) {
     return;
   }
 
-  const adminCode = sessionStorage.getItem(ADMIN_CODE_SESSION_KEY);
+  const adminContext = getAdminContext();
 
-  if (!adminCode) {
+  if (!adminContext.code) {
     showAdminError("Reconnecte-toi au panel admin.");
     disableAdminMode();
     return;
   }
 
-  const { error } = await supabaseClient.rpc("upsert_site_content", {
+  if (!hasPermission("edit_content")) {
+    showAdminError("Tu n'as pas la permission de modifier les textes.");
+    setSaveStatus("Permission refusee", "error");
+    return;
+  }
+
+  const { error } = await supabaseClient.rpc("upsert_site_content_admin", {
     p_key: contentKey,
     p_value: value,
-    p_admin_code: adminCode,
+    p_admin_name: adminContext.name,
+    p_admin_code: adminContext.code,
   });
 
   if (error) {
     console.error("Erreur de sauvegarde Supabase.", error);
     showAdminError("Sauvegarde impossible dans Supabase.");
+    setSaveStatus("Erreur de sauvegarde", "error");
     return;
   }
 
   showAdminError("");
+  setSaveStatus("Sauvegarde terminee", "saved");
 }
 
 async function verifyAdminCode(adminCode) {
@@ -385,6 +476,26 @@ async function verifyAdminCode(adminCode) {
   }
 
   return data === true;
+}
+
+async function verifyAdminIdentity(adminName, adminCode) {
+  if (!supabaseClient) {
+    showAdminError("Configure Supabase avant d'utiliser le panel admin.");
+    return null;
+  }
+
+  const { data, error } = await supabaseClient.rpc("get_site_admin_session", {
+    p_admin_name: adminName,
+    p_admin_code: adminCode,
+  });
+
+  if (error) {
+    console.error("Verification admin impossible.", error);
+    showAdminError("Verification admin impossible.");
+    return null;
+  }
+
+  return data;
 }
 
 function subscribeToContentChanges() {
@@ -435,6 +546,10 @@ function openAdminModal() {
   adminModal.classList.add("is-open");
   adminModal.setAttribute("aria-hidden", "false");
   adminCodeInput.value = "";
+  pendingAdminCode = "";
+  if (adminIdentityStep) {
+    adminIdentityStep.hidden = true;
+  }
   showAdminError("");
   adminCodeInput.focus();
 }
@@ -452,16 +567,30 @@ function enableAdminMode() {
   document.body.classList.add("admin-active");
 
   editableElements.forEach((element) => {
-    element.setAttribute("contenteditable", "true");
-    element.setAttribute("spellcheck", "false");
+    if (hasPermission("edit_content")) {
+      element.setAttribute("contenteditable", "true");
+      element.setAttribute("spellcheck", "false");
+    } else {
+      element.removeAttribute("contenteditable");
+      element.removeAttribute("spellcheck");
+    }
   });
 
   if (adminToolbar) {
     adminToolbar.hidden = false;
   }
 
+  const modeLabel = document.querySelector(".admin-mode-label");
+  const context = getAdminContext();
+  if (modeLabel) {
+    modeLabel.textContent = `${context.role === "owner" ? "Owner" : "Admin"}: ${context.name || "connecte"}`;
+  }
+
+  updateAdminCounts();
+  setSaveStatus("Pret", "idle");
+
   if (memberAdminPanel) {
-    memberAdminPanel.hidden = false;
+    memberAdminPanel.hidden = !(hasPermission("manage_rosters") || hasPermission("manage_members"));
   }
 
   renderRosters();
@@ -484,6 +613,7 @@ function disableAdminMode() {
   }
 
   hideMemberForm();
+  setSaveStatus("Pret", "idle");
   renderRosters();
 }
 
@@ -491,10 +621,71 @@ function isAdminActive() {
   return sessionStorage.getItem(ADMIN_SESSION_KEY) === "true";
 }
 
+function storeAdminSession(session, adminCode) {
+  sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+  sessionStorage.setItem(ADMIN_CODE_SESSION_KEY, adminCode);
+  sessionStorage.setItem(ADMIN_NAME_SESSION_KEY, session.name || "");
+  sessionStorage.setItem(ADMIN_ROLE_SESSION_KEY, session.role || "admin");
+  sessionStorage.setItem(ADMIN_PERMISSIONS_SESSION_KEY, JSON.stringify(session.permissions || {}));
+}
+
+function getAdminContext() {
+  return {
+    name: sessionStorage.getItem(ADMIN_NAME_SESSION_KEY) || "",
+    code: sessionStorage.getItem(ADMIN_CODE_SESSION_KEY) || "",
+    role: sessionStorage.getItem(ADMIN_ROLE_SESSION_KEY) || "admin",
+    permissions: readAdminPermissions(),
+  };
+}
+
+function readAdminPermissions() {
+  try {
+    return JSON.parse(sessionStorage.getItem(ADMIN_PERMISSIONS_SESSION_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function hasPermission(permission) {
+  const context = getAdminContext();
+  return context.role === "owner" || context.permissions[permission] === true;
+}
+
 function showAdminError(message) {
   if (adminError) {
     adminError.innerText = message;
   }
+}
+
+function setSaveStatus(message, state = "idle") {
+  if (!adminSaveStatus) {
+    return;
+  }
+
+  clearTimeout(saveStatusTimer);
+  adminSaveStatus.textContent = message;
+  adminSaveStatus.classList.remove("is-saving", "is-saved", "is-error");
+
+  if (state !== "idle") {
+    adminSaveStatus.classList.add(`is-${state}`);
+  }
+
+  if (state === "saved") {
+    saveStatusTimer = setTimeout(() => {
+      adminSaveStatus.textContent = "Pret";
+      adminSaveStatus.classList.remove("is-saved");
+    }, 2200);
+  }
+}
+
+function updateAdminCounts() {
+  if (!adminCounts) {
+    return;
+  }
+
+  const rosterLabel = `${rosters.length} roster${rosters.length > 1 ? "s" : ""}`;
+  const memberLabel = `${members.length} membre${members.length > 1 ? "s" : ""}`;
+  adminCounts.textContent = `${rosterLabel} - ${memberLabel}`;
 }
 
 function closeMobileNav() {
@@ -603,10 +794,13 @@ function renderRosters() {
     return;
   }
 
+  updateAdminCounts();
   rosterBoard.innerHTML = "";
   updateRosterSelect();
 
   const sortedRosters = [...rosters].sort(sortByOrderThenName);
+  const canManageMembers = hasPermission("manage_members");
+  const canManageRosters = hasPermission("manage_rosters");
 
   sortedRosters.forEach((roster) => {
     const column = document.createElement("article");
@@ -614,7 +808,7 @@ function renderRosters() {
     column.dataset.rosterId = roster.id;
 
     column.addEventListener("dragover", (event) => {
-      if (!isAdminActive() || draggedMemberId === null) {
+      if (!isAdminActive() || !hasPermission("manage_members") || draggedMemberId === null) {
         return;
       }
 
@@ -630,7 +824,7 @@ function renderRosters() {
       event.preventDefault();
       column.classList.remove("is-drop-target");
 
-      if (!isAdminActive() || draggedMemberId === null) {
+      if (!isAdminActive() || !hasPermission("manage_members") || draggedMemberId === null) {
         return;
       }
 
@@ -652,17 +846,17 @@ function renderRosters() {
           </div>
         </div>
         <div class="roster-actions">
-          <button class="icon-button roster-add-member" type="button" title="Ajouter un membre">+</button>
-          <button class="icon-button roster-edit" type="button" title="Modifier le roster">E</button>
-          <button class="icon-button roster-delete" type="button" title="Supprimer le roster">x</button>
+          ${canManageMembers ? '<button class="icon-button roster-add-member" type="button" title="Ajouter un membre">+</button>' : ""}
+          ${canManageRosters ? '<button class="icon-button roster-edit" type="button" title="Modifier le roster">E</button>' : ""}
+          ${canManageRosters ? '<button class="icon-button roster-delete" type="button" title="Supprimer le roster">x</button>' : ""}
         </div>
       </div>
       <div class="member-list"></div>
     `;
 
-    column.querySelector(".roster-add-member").addEventListener("click", () => showMemberForm({ rosterId: roster.id }));
-    column.querySelector(".roster-edit").addEventListener("click", () => editRoster(roster));
-    column.querySelector(".roster-delete").addEventListener("click", () => deleteRoster(roster.id));
+    column.querySelector(".roster-add-member")?.addEventListener("click", () => showMemberForm({ rosterId: roster.id }));
+    column.querySelector(".roster-edit")?.addEventListener("click", () => editRoster(roster));
+    column.querySelector(".roster-delete")?.addEventListener("click", () => deleteRoster(roster.id));
 
     const memberList = column.querySelector(".member-list");
 
@@ -682,9 +876,10 @@ function renderRosters() {
 }
 
 function createMemberCard(member, roster) {
+  const canManageMembers = hasPermission("manage_members");
   const card = document.createElement("article");
   card.className = "member-card";
-  card.draggable = isAdminActive();
+  card.draggable = isAdminActive() && canManageMembers;
   card.dataset.memberId = member.id;
   card.style.borderLeftColor = roster.color || "#4cb8ff";
 
@@ -692,8 +887,8 @@ function createMemberCard(member, roster) {
     <div class="member-main">
       <strong class="member-name">${escapeHtml(member.name)}</strong>
       <div class="member-actions">
-        <button class="icon-button member-edit" type="button" title="Modifier le membre">E</button>
-        <button class="icon-button member-delete" type="button" title="Supprimer le membre">x</button>
+        ${canManageMembers ? '<button class="icon-button member-edit" type="button" title="Modifier le membre">E</button>' : ""}
+        ${canManageMembers ? '<button class="icon-button member-delete" type="button" title="Supprimer le membre">x</button>' : ""}
       </div>
     </div>
     <div class="member-meta">
@@ -703,7 +898,7 @@ function createMemberCard(member, roster) {
   `;
 
   card.addEventListener("dragstart", (event) => {
-    if (!isAdminActive()) {
+    if (!isAdminActive() || !canManageMembers) {
       event.preventDefault();
       return;
     }
@@ -718,8 +913,8 @@ function createMemberCard(member, roster) {
     draggedMemberId = null;
   });
 
-  card.querySelector(".member-edit").addEventListener("click", () => showMemberForm({ member }));
-  card.querySelector(".member-delete").addEventListener("click", () => deleteMember(member.id));
+  card.querySelector(".member-edit")?.addEventListener("click", () => showMemberForm({ member }));
+  card.querySelector(".member-delete")?.addEventListener("click", () => deleteMember(member.id));
 
   return card;
 }
@@ -770,26 +965,31 @@ async function editRoster(roster) {
 }
 
 async function saveRoster(roster) {
-  const adminCode = getAdminCodeOrStop();
+  const adminContext = getAdminCodeOrStop();
 
-  if (!adminCode || !supabaseClient) {
+  if (!adminContext || !supabaseClient || !hasPermission("manage_rosters")) {
     return;
   }
 
-  const { error } = await supabaseClient.rpc("upsert_site_roster", {
+  setSaveStatus("Sauvegarde...", "saving");
+
+  const { error } = await supabaseClient.rpc("upsert_site_roster_admin", {
     p_id: roster.id && roster.id > 0 ? roster.id : null,
     p_name: roster.name,
     p_color: roster.color || "#4cb8ff",
     p_sort_order: roster.sort_order || 0,
-    p_admin_code: adminCode,
+    p_admin_name: adminContext.name,
+    p_admin_code: adminContext.code,
   });
 
   if (error) {
     console.error("Sauvegarde roster impossible.", error);
     showAdminError("Sauvegarde roster impossible.");
+    setSaveStatus("Erreur de sauvegarde", "error");
     return;
   }
 
+  setSaveStatus("Sauvegarde terminee", "saved");
   await loadRosterData();
 }
 
@@ -798,49 +998,59 @@ async function deleteRoster(rosterId) {
     return;
   }
 
-  const adminCode = getAdminCodeOrStop();
+  const adminContext = getAdminCodeOrStop();
 
-  if (!adminCode || !supabaseClient) {
+  if (!adminContext || !supabaseClient || !hasPermission("manage_rosters")) {
     return;
   }
 
-  const { error } = await supabaseClient.rpc("delete_site_roster", {
+  setSaveStatus("Sauvegarde...", "saving");
+
+  const { error } = await supabaseClient.rpc("delete_site_roster_admin", {
     p_id: rosterId,
-    p_admin_code: adminCode,
+    p_admin_name: adminContext.name,
+    p_admin_code: adminContext.code,
   });
 
   if (error) {
     console.error("Suppression roster impossible.", error);
     showAdminError("Suppression roster impossible.");
+    setSaveStatus("Erreur de sauvegarde", "error");
     return;
   }
 
+  setSaveStatus("Sauvegarde terminee", "saved");
   await loadRosterData();
 }
 
 async function saveMember(member) {
-  const adminCode = getAdminCodeOrStop();
+  const adminContext = getAdminCodeOrStop();
 
-  if (!adminCode || !supabaseClient) {
+  if (!adminContext || !supabaseClient || !hasPermission("manage_members")) {
     return;
   }
 
-  const { error } = await supabaseClient.rpc("upsert_site_member", {
+  setSaveStatus("Sauvegarde...", "saving");
+
+  const { error } = await supabaseClient.rpc("upsert_site_member_admin", {
     p_id: member.id && member.id > 0 ? member.id : null,
     p_roster_id: member.roster_id,
     p_name: member.name,
     p_role: member.role,
     p_level: member.level,
     p_sort_order: member.sort_order || 0,
-    p_admin_code: adminCode,
+    p_admin_name: adminContext.name,
+    p_admin_code: adminContext.code,
   });
 
   if (error) {
     console.error("Sauvegarde membre impossible.", error);
     showAdminError("Sauvegarde membre impossible.");
+    setSaveStatus("Erreur de sauvegarde", "error");
     return;
   }
 
+  setSaveStatus("Sauvegarde terminee", "saved");
   await loadRosterData();
 }
 
@@ -849,47 +1059,57 @@ async function deleteMember(memberId) {
     return;
   }
 
-  const adminCode = getAdminCodeOrStop();
+  const adminContext = getAdminCodeOrStop();
 
-  if (!adminCode || !supabaseClient) {
+  if (!adminContext || !supabaseClient || !hasPermission("manage_members")) {
     return;
   }
 
-  const { error } = await supabaseClient.rpc("delete_site_member", {
+  setSaveStatus("Sauvegarde...", "saving");
+
+  const { error } = await supabaseClient.rpc("delete_site_member_admin", {
     p_id: memberId,
-    p_admin_code: adminCode,
+    p_admin_name: adminContext.name,
+    p_admin_code: adminContext.code,
   });
 
   if (error) {
     console.error("Suppression membre impossible.", error);
     showAdminError("Suppression membre impossible.");
+    setSaveStatus("Erreur de sauvegarde", "error");
     return;
   }
 
+  setSaveStatus("Sauvegarde terminee", "saved");
   await loadRosterData();
 }
 
 async function moveMemberToRoster(memberId, rosterId) {
-  const adminCode = getAdminCodeOrStop();
+  const adminContext = getAdminCodeOrStop();
 
-  if (!adminCode || !supabaseClient) {
+  if (!adminContext || !supabaseClient || !hasPermission("manage_members")) {
     return;
   }
 
+  setSaveStatus("Sauvegarde...", "saving");
+
   const newOrder = members.filter((member) => member.roster_id === rosterId).length;
-  const { error } = await supabaseClient.rpc("move_site_member", {
+  const { error } = await supabaseClient.rpc("move_site_member_admin", {
     p_member_id: memberId,
     p_roster_id: rosterId,
     p_sort_order: newOrder,
-    p_admin_code: adminCode,
+    p_admin_name: adminContext.name,
+    p_admin_code: adminContext.code,
   });
 
   if (error) {
     console.error("Deplacement membre impossible.", error);
     showAdminError("Deplacement membre impossible.");
+    setSaveStatus("Erreur de sauvegarde", "error");
     return;
   }
 
+  setSaveStatus("Sauvegarde terminee", "saved");
   await loadRosterData();
 }
 
@@ -911,21 +1131,224 @@ function writeRosterCache() {
   localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify({ rosters, members }));
 }
 
-function getAdminCodeOrStop() {
-  const adminCode = sessionStorage.getItem(ADMIN_CODE_SESSION_KEY);
+async function openAdminPanel() {
+  if (!adminPanelModal) {
+    return;
+  }
 
-  if (!adminCode) {
+  adminPanelModal.classList.add("is-open");
+  adminPanelModal.setAttribute("aria-hidden", "false");
+  renderAdminPanelBase();
+  await loadAdminPanelData();
+}
+
+function closeAdminPanel() {
+  if (!adminPanelModal) {
+    return;
+  }
+
+  adminPanelModal.classList.remove("is-open");
+  adminPanelModal.setAttribute("aria-hidden", "true");
+}
+
+function renderAdminPanelBase() {
+  const context = getAdminContext();
+
+  if (adminPanelSummary) {
+    adminPanelSummary.innerHTML = `
+      <span>${escapeHtml(context.role === "owner" ? "Owner" : "Admin")} : ${escapeHtml(context.name || "-")}</span>
+      <span>${rosters.length} roster${rosters.length > 1 ? "s" : ""}</span>
+      <span>${members.length} membre${members.length > 1 ? "s" : ""}</span>
+    `;
+  }
+
+  if (adminLogList) {
+    adminLogList.innerHTML = hasPermission("view_history")
+      ? "<p>Chargement de l'historique...</p>"
+      : "<p>Tu n'as pas la permission de voir l'historique.</p>";
+  }
+
+  if (adminPermissionsSection) {
+    adminPermissionsSection.hidden = !hasPermission("manage_permissions");
+  }
+
+  if (adminClearHistory) {
+    adminClearHistory.hidden = !hasPermission("clear_history");
+  }
+}
+
+async function loadAdminPanelData() {
+  const context = getAdminContext();
+
+  if (!supabaseClient || !context.name || !context.code) {
+    return;
+  }
+
+  if (hasPermission("view_history")) {
+    const { data, error } = await supabaseClient.rpc("get_site_admin_logs", {
+      p_admin_name: context.name,
+      p_admin_code: context.code,
+    });
+
+    if (error) {
+      console.error("Historique admin impossible.", error);
+      if (adminLogList) {
+        adminLogList.innerHTML = "<p>Impossible de charger l'historique.</p>";
+      }
+    } else {
+      renderAdminLogs(data || []);
+    }
+  }
+
+  if (hasPermission("manage_permissions")) {
+    const { data, error } = await supabaseClient.rpc("get_site_admin_users", {
+      p_admin_name: context.name,
+      p_admin_code: context.code,
+    });
+
+    if (error) {
+      console.error("Permissions admin impossibles.", error);
+      if (adminPermissionsList) {
+        adminPermissionsList.innerHTML = "<p>Impossible de charger les permissions.</p>";
+      }
+    } else {
+      renderAdminPermissions(data || []);
+    }
+  }
+}
+
+function renderAdminLogs(logs) {
+  if (!adminLogList) {
+    return;
+  }
+
+  if (logs.length === 0) {
+    adminLogList.innerHTML = "<p>Aucune modification pour le moment.</p>";
+    return;
+  }
+
+  adminLogList.innerHTML = logs
+    .map((log) => {
+      const date = new Date(log.created_at);
+      return `
+        <article class="admin-log-item">
+          <strong>${escapeHtml(log.admin_name)}</strong>
+          <span>${escapeHtml(formatAdminAction(log.action))} - ${escapeHtml(log.target || "-")}</span>
+          <time datetime="${escapeHtml(log.created_at)}">${escapeHtml(date.toLocaleString("fr-FR"))}</time>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderAdminPermissions(admins) {
+  if (!adminPermissionsList) {
+    return;
+  }
+
+  adminPermissionsList.innerHTML = admins
+    .map((admin) => {
+      const isOwner = admin.role === "owner";
+      const permissionInputs = Object.entries(PERMISSION_LABELS)
+        .map(([key, label]) => {
+          const checked = admin.role === "owner" || admin.permissions?.[key] === true ? "checked" : "";
+          const disabled = isOwner ? "disabled" : "";
+          return `
+            <label>
+              <input type="checkbox" data-permission="${escapeHtml(key)}" ${checked} ${disabled} />
+              ${escapeHtml(label)}
+            </label>
+          `;
+        })
+        .join("");
+
+      return `
+        <article class="admin-permission-card" data-admin-name="${escapeHtml(admin.name)}">
+          <div class="admin-permission-top">
+            <strong>${escapeHtml(admin.name)} (${escapeHtml(admin.role)})</strong>
+            <label class="admin-active-toggle">
+              <input type="checkbox" data-active ${admin.is_active ? "checked" : ""} ${isOwner ? "disabled" : ""} />
+              Actif
+            </label>
+          </div>
+          <div class="admin-permission-grid">${permissionInputs}</div>
+          ${isOwner ? "" : '<button class="button compact save-admin-permissions" type="button">Sauvegarder les permissions</button>'}
+        </article>
+      `;
+    })
+    .join("");
+
+  adminPermissionsList.querySelectorAll(".save-admin-permissions").forEach((button) => {
+    button.addEventListener("click", () => saveAdminPermissions(button.closest(".admin-permission-card")));
+  });
+}
+
+async function saveAdminPermissions(card) {
+  if (!card || !supabaseClient) {
+    return;
+  }
+
+  const context = getAdminContext();
+  const permissions = {};
+
+  card.querySelectorAll("[data-permission]").forEach((input) => {
+    permissions[input.dataset.permission] = input.checked;
+  });
+
+  const { error } = await supabaseClient.rpc("update_site_admin_permissions", {
+    p_owner_name: context.name,
+    p_owner_code: context.code,
+    p_target_admin_name: card.dataset.adminName,
+    p_permissions: permissions,
+    p_is_active: card.querySelector("[data-active]")?.checked === true,
+  });
+
+  if (error) {
+    console.error("Sauvegarde permissions impossible.", error);
+    setSaveStatus("Erreur permissions", "error");
+    return;
+  }
+
+  setSaveStatus("Permissions sauvegardees", "saved");
+  await loadAdminPanelData();
+}
+
+async function clearAdminHistory() {
+  if (!window.confirm("Vider l'historique admin ? Cette action sera elle-meme enregistree.")) {
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("clear_site_admin_logs", {
+    p_owner_name: context.name,
+    p_owner_code: context.code,
+  });
+
+  if (error) {
+    console.error("Suppression historique impossible.", error);
+    setSaveStatus("Erreur historique", "error");
+    return;
+  }
+
+  setSaveStatus("Historique vide", "saved");
+  await loadAdminPanelData();
+}
+
+function getAdminCodeOrStop() {
+  const adminContext = getAdminContext();
+
+  if (!adminContext.code || !adminContext.name) {
     showAdminError("Reconnecte-toi au panel admin.");
     disableAdminMode();
-    return "";
+    return null;
   }
 
   if (!supabaseClient) {
     showAdminError("Supabase n'est pas configure.");
-    return "";
+    return null;
   }
 
-  return adminCode;
+  return adminContext;
 }
 
 function getMemberSortOrder(memberId) {
@@ -934,6 +1357,23 @@ function getMemberSortOrder(memberId) {
 
 function sortByOrderThenName(a, b) {
   return (a.sort_order || 0) - (b.sort_order || 0) || String(a.name).localeCompare(String(b.name));
+}
+
+function formatAdminAction(action) {
+  const labels = {
+    edit_content: "Texte modifie",
+    create_roster: "Roster cree",
+    edit_roster: "Roster modifie",
+    delete_roster: "Roster supprime",
+    create_member: "Membre ajoute",
+    edit_member: "Membre modifie",
+    delete_member: "Membre supprime",
+    move_member: "Membre deplace",
+    update_permissions: "Permissions modifiees",
+    clear_history: "Historique vide",
+  };
+
+  return labels[action] || action;
 }
 
 function escapeHtml(value) {

@@ -502,6 +502,31 @@ p {
   padding: 96px 0 0;
 }
 
+.section-hidden {
+  display: none !important;
+}
+
+.section-admin-hidden {
+  position: relative;
+  opacity: 0.42;
+  filter: grayscale(0.35);
+}
+
+.section-admin-hidden::after {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  border: 1px solid rgba(255, 200, 87, 0.42);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(15, 27, 42, 0.94);
+  color: #ffe3a1;
+  font-size: 0.72rem;
+  font-weight: 900;
+  content: "🙈 Cachee visiteurs";
+}
+
 .split,
 .recruitment {
   display: grid;
@@ -1048,7 +1073,8 @@ p {
 .admin-log-filter,
 .admin-create-form input,
 .admin-create-form select,
-.admin-announcement-form input {
+.admin-announcement-form input,
+.admin-section-form input {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 10px;
@@ -1225,7 +1251,8 @@ p {
 }
 
 .admin-create-form,
-.admin-announcement-form {
+.admin-announcement-form,
+.admin-section-form {
   display: grid;
   grid-template-columns: 1fr 1fr 180px auto;
   gap: 8px;
@@ -1236,14 +1263,20 @@ p {
   grid-template-columns: 1fr 1.4fr auto;
 }
 
+.admin-section-form {
+  grid-template-columns: 0.8fr 1fr 1.4fr auto;
+}
+
 .admin-announcement-list,
-.admin-backup-list {
+.admin-backup-list,
+.admin-section-list {
   display: grid;
   gap: 10px;
 }
 
 .admin-announcement-item,
-.admin-backup-item {
+.admin-backup-item,
+.admin-section-item {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 12px;
@@ -1251,8 +1284,31 @@ p {
 }
 
 .admin-announcement-item strong,
-.admin-backup-item strong {
+.admin-backup-item strong,
+.admin-section-item strong {
   color: #ffffff;
+}
+
+.admin-section-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-section-item span {
+  display: block;
+  margin-top: 5px;
+  color: #b9cadb;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.admin-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .admin-permission-card {
@@ -1632,15 +1688,21 @@ p {
   .admin-log-item,
   .admin-permission-grid,
   .admin-create-form,
-  .admin-announcement-form {
+  .admin-announcement-form,
+  .admin-section-form {
     grid-template-columns: 1fr;
   }
 
   .admin-panel-heading,
   .admin-permission-top,
-  .admin-log-tools {
+  .admin-log-tools,
+  .admin-section-item {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .admin-section-actions {
+    justify-content: stretch;
   }
 }
 

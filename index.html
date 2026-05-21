@@ -83,7 +83,7 @@
 
         </section>
 
-        <section class="notice">
+        <section class="notice" data-section-key="notice">
           <div>
             <strong>Recrutements ouverts</strong>
             <p>Vortex cherche des joueurs motives, reguliers et respectueux pour renforcer le roster.</p>
@@ -91,7 +91,7 @@
           <a class="button compact" href="#recrutement">Voir les criteres</a>
         </section>
 
-        <section class="section members" id="membres">
+        <section class="section members" id="membres" data-section-key="members">
           <div class="section-heading">
             <p class="eyebrow">Membres</p>
             <h2>Les rosters Vortex.</h2>
@@ -137,7 +137,7 @@
           <div class="roster-board" aria-live="polite"></div>
         </section>
 
-        <section class="section split" id="team">
+        <section class="section split" id="team" data-section-key="team">
           <div class="section-copy">
             <p class="eyebrow">Notre identite</p>
             <h2>Une structure simple, serieuse et lisible.</h2>
@@ -166,7 +166,7 @@
           </div>
         </section>
 
-        <section class="section" id="objectifs">
+        <section class="section" id="objectifs" data-section-key="objectifs">
           <div class="section-heading">
             <p class="eyebrow">Objectifs</p>
             <h2>Ce que Vortex construit.</h2>
@@ -191,7 +191,7 @@
           </div>
         </section>
 
-        <section class="section recruitment" id="recrutement">
+        <section class="section recruitment" id="recrutement" data-section-key="recrutement">
           <div class="section-copy">
             <p class="eyebrow">Recrutement</p>
             <h2>Tu veux porter les couleurs de Vortex ?</h2>
@@ -220,7 +220,7 @@
           </div>
         </section>
 
-        <section class="section community">
+        <section class="section community" data-section-key="community">
           <div class="section-heading">
             <p class="eyebrow">Communaute</p>
             <h2>Un cadre pour jouer mieux, ensemble.</h2>
@@ -246,7 +246,9 @@
           </div>
         </section>
 
-        <section class="section faq" id="faq">
+        <div class="custom-sections" data-static></div>
+
+        <section class="section faq" id="faq" data-section-key="faq">
           <div class="section-heading">
             <p class="eyebrow">Questions</p>
             <h2>Avant de postuler.</h2>
@@ -353,6 +355,19 @@
             <button class="admin-create-backup" type="button">💾 Créer un backup</button>
           </div>
           <div class="admin-backup-list"></div>
+        </div>
+        <div class="admin-panel-section admin-sections-section" hidden>
+          <div class="admin-panel-heading">
+            <h3>Sections du site</h3>
+            <p>Les admins peuvent créer/cacher. Seul le owner peut supprimer.</p>
+          </div>
+          <form class="admin-section-form">
+            <input name="section-label" type="text" placeholder="Nom interne" />
+            <input name="section-title" type="text" placeholder="Titre affiché" />
+            <input name="section-body" type="text" placeholder="Texte de la section" />
+            <button class="button compact" type="submit">✅ Créer section</button>
+          </form>
+          <div class="admin-section-list"></div>
         </div>
         <div class="admin-panel-section">
           <div class="admin-panel-heading">

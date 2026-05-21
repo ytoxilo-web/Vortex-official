@@ -25,12 +25,16 @@ const adminAnnouncementList = document.querySelector(".admin-announcement-list")
 const adminBackupsSection = document.querySelector(".admin-backups-section");
 const adminCreateBackup = document.querySelector(".admin-create-backup");
 const adminBackupList = document.querySelector(".admin-backup-list");
+const adminSectionsSection = document.querySelector(".admin-sections-section");
+const adminSectionForm = document.querySelector(".admin-section-form");
+const adminSectionList = document.querySelector(".admin-section-list");
 const adminLogList = document.querySelector(".admin-log-list");
 const adminLogFilter = document.querySelector(".admin-log-filter");
 const adminClearHistory = document.querySelector(".admin-clear-history");
 const adminScrollTop = document.querySelector(".admin-scroll-top");
 const adminLogout = document.querySelector(".admin-logout");
 const rosterBoard = document.querySelector(".roster-board");
+const customSections = document.querySelector(".custom-sections");
 const memberAdminPanel = document.querySelector(".member-admin-panel");
 const addRosterButton = document.querySelector(".add-roster-button");
 const memberForm = document.querySelector(".member-form");
@@ -59,6 +63,7 @@ const PERMISSION_LABELS = {
   manage_announcements: "📣 Annonces internes",
   manage_backups: "💾 Backups/restauration",
   manage_staff: "⭐ Gerer le staff",
+  manage_sections: "🧩 Gerer les sections",
   force_logout: "🚪 Forcer deconnexion",
 };
 
@@ -140,6 +145,7 @@ const saveTimers = new Map();
 const supabaseClient = createSupabaseClient();
 let rosters = [];
 let members = [];
+let siteSections = [];
 let draggedMemberId = null;
 let saveStatusTimer = null;
 let pendingAdminCode = "";
@@ -199,6 +205,7 @@ loadCachedContent();
 loadSupabaseContent();
 loadCachedRosters();
 loadRosterData();
+loadSiteSections();
 subscribeToContentChanges();
 subscribeToRosterChanges();
 initRevealAnimation();
@@ -292,6 +299,10 @@ if (adminAnnouncementForm) {
 
 if (adminCreateBackup) {
   adminCreateBackup.addEventListener("click", createContentBackup);
+}
+
+if (adminSectionForm) {
+  adminSectionForm.addEventListener("submit", createSiteSectionFromPanel);
 }
 
 if (adminScrollTop) {
@@ -645,6 +656,8 @@ function enableAdminMode() {
   }
 
   renderRosters();
+  applySectionVisibility();
+  renderCustomSections();
 }
 
 function disableAdminMode() {
@@ -666,6 +679,8 @@ function disableAdminMode() {
   hideMemberForm();
   setSaveStatus("Pret", "idle");
   renderRosters();
+  applySectionVisibility();
+  renderCustomSections();
 }
 
 function isAdminActive() {
@@ -879,6 +894,105 @@ function seedDefaultRosterData() {
   ];
   members = [];
   renderRosters();
+}
+
+async function loadSiteSections() {
+  if (!supabaseClient) {
+    return;
+  }
+
+  const { data, error } = await supabaseClient.from("site_sections").select("*").order("sort_order").order("label");
+
+  if (error) {
+    console.error("Impossible de charger les sections du site.", error);
+    return;
+  }
+
+  siteSections = data || [];
+  applySectionVisibility();
+  renderCustomSections();
+  renderAdminSections();
+}
+
+function applySectionVisibility() {
+  document.querySelectorAll("[data-section-key]").forEach((element) => {
+    const section = siteSections.find((item) => item.section_key === element.dataset.sectionKey);
+    const isVisible = !section || section.is_visible;
+    element.classList.toggle("section-hidden", !isVisible && !isAdminActive());
+    element.classList.toggle("section-admin-hidden", !isVisible && isAdminActive());
+  });
+}
+
+function renderCustomSections() {
+  if (!customSections) {
+    return;
+  }
+
+  const visibleSections = siteSections.filter((section) => section.is_custom && (section.is_visible || isAdminActive()));
+
+  customSections.innerHTML = visibleSections
+    .map(
+      (section) => `
+        <section class="section custom-section ${section.is_visible ? "" : "section-admin-hidden"}" data-section-key="${escapeHtml(section.section_key)}">
+          <div class="section-heading">
+            <p class="eyebrow">${section.is_visible ? "Section" : "Section cachee"}</p>
+            <h2>${escapeHtml(section.title || section.label)}</h2>
+            <p>${escapeHtml(section.body || "")}</p>
+          </div>
+        </section>
+      `
+    )
+    .join("");
+}
+
+function renderAdminSections() {
+  if (!adminSectionList || !hasPermission("manage_sections")) {
+    return;
+  }
+
+  if (siteSections.length === 0) {
+    adminSectionList.innerHTML = "<p>Aucune section chargee.</p>";
+    return;
+  }
+
+  const isOwner = getAdminContext().role === "owner";
+  adminSectionList.innerHTML = siteSections
+    .map(
+      (section) => `
+        <article class="admin-section-item" data-section-key="${escapeHtml(section.section_key)}">
+          <div>
+            <strong>${escapeHtml(section.label)}</strong>
+            <span>${section.is_custom ? "Custom" : "Section native"} - ${section.is_visible ? "visible" : "cachee"}</span>
+          </div>
+          <div class="admin-section-actions">
+            <button class="admin-small-action toggle-section" type="button">
+              ${section.is_visible ? "🙈 Cacher" : "✅ Afficher"}
+            </button>
+            ${
+              section.is_custom
+                ? '<button class="admin-small-action edit-section" type="button">✏️ Modifier</button>'
+                : ""
+            }
+            ${
+              section.is_custom && isOwner
+                ? '<button class="admin-small-action delete-section" type="button">❌ Supprimer</button>'
+                : ""
+            }
+          </div>
+        </article>
+      `
+    )
+    .join("");
+
+  adminSectionList.querySelectorAll(".toggle-section").forEach((button) => {
+    button.addEventListener("click", () => toggleSiteSection(button.closest(".admin-section-item")));
+  });
+  adminSectionList.querySelectorAll(".edit-section").forEach((button) => {
+    button.addEventListener("click", () => editCustomSiteSection(button.closest(".admin-section-item")));
+  });
+  adminSectionList.querySelectorAll(".delete-section").forEach((button) => {
+    button.addEventListener("click", () => deleteCustomSiteSection(button.closest(".admin-section-item")));
+  });
 }
 
 function renderRosters() {
@@ -1280,6 +1394,10 @@ function renderAdminPanelBase() {
     adminBackupsSection.hidden = !hasPermission("manage_backups");
   }
 
+  if (adminSectionsSection) {
+    adminSectionsSection.hidden = !hasPermission("manage_sections");
+  }
+
   if (adminClearHistory) {
     adminClearHistory.hidden = !hasPermission("clear_history");
   }
@@ -1331,6 +1449,10 @@ async function loadAdminPanelData() {
 
   if (hasPermission("manage_backups")) {
     await loadContentBackups();
+  }
+
+  if (hasPermission("manage_sections")) {
+    renderAdminSections();
   }
 }
 
@@ -1473,6 +1595,123 @@ async function saveAdminPermissions(card) {
   }
 
   setSaveStatus("Permissions sauvegardees", "saved");
+  await loadAdminPanelData();
+}
+
+async function createSiteSectionFromPanel(event) {
+  event.preventDefault();
+
+  const formData = new FormData(adminSectionForm);
+  const label = String(formData.get("section-label") || "").trim();
+  const title = String(formData.get("section-title") || "").trim();
+  const body = String(formData.get("section-body") || "").trim();
+
+  if (!label || !title) {
+    setSaveStatus("Nom et titre requis", "error");
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("create_custom_site_section", {
+    p_admin_name: context.name,
+    p_admin_code: context.code,
+    p_label: label,
+    p_title: title,
+    p_body: body,
+  });
+
+  if (error) {
+    console.error("Creation section impossible.", error);
+    setSaveStatus("Erreur section", "error");
+    return;
+  }
+
+  adminSectionForm.reset();
+  setSaveStatus("Section creee", "saved");
+  await loadSiteSections();
+  await loadAdminPanelData();
+}
+
+async function toggleSiteSection(card) {
+  const section = siteSections.find((item) => item.section_key === card?.dataset.sectionKey);
+
+  if (!section) {
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("upsert_site_section_visibility", {
+    p_admin_name: context.name,
+    p_admin_code: context.code,
+    p_section_key: section.section_key,
+    p_is_visible: !section.is_visible,
+  });
+
+  if (error) {
+    console.error("Visibilite section impossible.", error);
+    setSaveStatus("Erreur visibilite", "error");
+    return;
+  }
+
+  setSaveStatus(section.is_visible ? "Section cachee" : "Section affichee", "saved");
+  await loadSiteSections();
+  await loadAdminPanelData();
+}
+
+async function editCustomSiteSection(card) {
+  const section = siteSections.find((item) => item.section_key === card?.dataset.sectionKey);
+
+  if (!section || !section.is_custom) {
+    return;
+  }
+
+  const label = window.prompt("Nom interne", section.label) || section.label;
+  const title = window.prompt("Titre affiche", section.title) || section.title;
+  const body = window.prompt("Texte de la section", section.body) || section.body;
+  const context = getAdminContext();
+
+  const { error } = await supabaseClient.rpc("update_custom_site_section", {
+    p_admin_name: context.name,
+    p_admin_code: context.code,
+    p_section_key: section.section_key,
+    p_label: label.trim(),
+    p_title: title.trim(),
+    p_body: body.trim(),
+  });
+
+  if (error) {
+    console.error("Modification section impossible.", error);
+    setSaveStatus("Erreur section", "error");
+    return;
+  }
+
+  setSaveStatus("Section modifiee", "saved");
+  await loadSiteSections();
+  await loadAdminPanelData();
+}
+
+async function deleteCustomSiteSection(card) {
+  const section = siteSections.find((item) => item.section_key === card?.dataset.sectionKey);
+
+  if (!section || !section.is_custom || !window.confirm(`Supprimer la section ${section.label} ?`)) {
+    return;
+  }
+
+  const context = getAdminContext();
+  const { error } = await supabaseClient.rpc("delete_custom_site_section", {
+    p_owner_name: context.name,
+    p_owner_code: context.code,
+    p_section_key: section.section_key,
+  });
+
+  if (error) {
+    console.error("Suppression section impossible.", error);
+    setSaveStatus("Suppression refusee", "error");
+    return;
+  }
+
+  setSaveStatus("Section supprimee", "saved");
+  await loadSiteSections();
   await loadAdminPanelData();
 }
 
@@ -1831,6 +2070,11 @@ function formatAdminAction(action) {
     create_backup: "💾 Backup cree",
     restore_backup: "↩️ Backup restaure",
     restore_text_version: "↩️ Ancienne version restauree",
+    hide_section: "🙈 Section cachee",
+    show_section: "✅ Section affichee",
+    create_section: "🧩 Section creee",
+    edit_section: "✏️ Section modifiee",
+    delete_section: "❌ Section supprimee",
   };
 
   return labels[action] || action;
@@ -1843,6 +2087,7 @@ function getActionIcon(action) {
   if (action.includes("permission") || action.includes("admin") || action.includes("logout")) return "🔐";
   if (action.includes("backup") || action.includes("restore")) return "↩️";
   if (action.includes("announcement")) return "📣";
+  if (action.includes("section")) return "🧩";
   if (action.includes("content") || action.includes("text")) return "✏️";
   return "•";
 }

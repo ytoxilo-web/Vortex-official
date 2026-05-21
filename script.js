@@ -31,7 +31,6 @@ const adminClearHistory = document.querySelector(".admin-clear-history");
 const adminScrollTop = document.querySelector(".admin-scroll-top");
 const adminLogout = document.querySelector(".admin-logout");
 const rosterBoard = document.querySelector(".roster-board");
-const staffGrid = document.querySelector(".staff-grid");
 const memberAdminPanel = document.querySelector(".member-admin-panel");
 const addRosterButton = document.querySelector(".add-roster-button");
 const memberForm = document.querySelector(".member-form");
@@ -139,7 +138,6 @@ const saveTimers = new Map();
 const supabaseClient = createSupabaseClient();
 let rosters = [];
 let members = [];
-let staffMembers = [];
 let draggedMemberId = null;
 let saveStatusTimer = null;
 let pendingAdminCode = "";
@@ -199,7 +197,6 @@ loadCachedContent();
 loadSupabaseContent();
 loadCachedRosters();
 loadRosterData();
-loadStaffData();
 subscribeToContentChanges();
 subscribeToRosterChanges();
 initRevealAnimation();
@@ -633,7 +630,9 @@ function enableAdminMode() {
   const modeLabel = document.querySelector(".admin-mode-label");
   const context = getAdminContext();
   if (modeLabel) {
-    modeLabel.textContent = `${context.role === "owner" ? "Owner" : "Admin"}: ${context.name || "connecte"}`;
+    modeLabel.textContent = context.role === "owner" ? "👑" : "🛡️";
+    modeLabel.title = `${context.role === "owner" ? "Owner" : "Admin"}: ${context.name || "connecte"}`;
+    modeLabel.setAttribute("aria-label", modeLabel.title);
   }
 
   updateAdminCounts();
@@ -864,51 +863,6 @@ function seedDefaultRosterData() {
   ];
   members = [];
   renderRosters();
-}
-
-async function loadStaffData() {
-  if (!supabaseClient) {
-    staffMembers = [
-      { name: "Malo", role: "Owner", description: "Gestion du site, permissions et organisation globale." },
-      { name: "Ayoub", role: "Admin", description: "Gestion Vortex et suivi de l'equipe." },
-      { name: "Quentin", role: "Admin", description: "Support staff et aide a la gestion." },
-    ];
-    renderStaff();
-    return;
-  }
-
-  const { data, error } = await supabaseClient.from("site_staff").select("*").order("sort_order").order("name");
-
-  if (error) {
-    console.error("Impossible de charger le staff.", error);
-    return;
-  }
-
-  staffMembers = data || [];
-  renderStaff();
-}
-
-function renderStaff() {
-  if (!staffGrid) {
-    return;
-  }
-
-  if (staffMembers.length === 0) {
-    staffGrid.innerHTML = '<p>Aucun membre du staff pour le moment.</p>';
-    return;
-  }
-
-  staffGrid.innerHTML = staffMembers
-    .map(
-      (member) => `
-        <article class="staff-card">
-          <strong>${escapeHtml(member.name)}</strong>
-          <span>${escapeHtml(member.role || "Staff")}</span>
-          <p>${escapeHtml(member.description || "")}</p>
-        </article>
-      `
-    )
-    .join("");
 }
 
 function renderRosters() {

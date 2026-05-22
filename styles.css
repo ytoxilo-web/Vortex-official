@@ -834,6 +834,15 @@ p {
   background: rgba(255, 255, 255, 0.065);
 }
 
+.member-card.has-member-link:not([draggable="true"]) {
+  cursor: pointer;
+}
+
+.member-card.has-member-link:not([draggable="true"]):hover {
+  border-color: rgba(125, 227, 255, 0.45);
+  background: rgba(125, 227, 255, 0.09);
+}
+
 .admin-active .member-card {
   cursor: grab;
 }

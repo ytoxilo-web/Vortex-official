@@ -361,6 +361,7 @@ if (memberForm) {
       name: String(formData.get("member-name") || "").trim(),
       role: String(formData.get("member-role") || "").trim(),
       level: String(formData.get("member-level") || "").trim(),
+      profile_url: normalizeMemberUrl(formData.get("member-link") || ""),
       sort_order: memberId ? getMemberSortOrder(Number(memberId)) : rosterMembers.length,
     });
 
@@ -1165,6 +1166,7 @@ function createMemberCard(member, roster) {
   const canMoveMembers = canManageMembers || hasPermission("move_members");
   const card = document.createElement("article");
   card.className = "member-card";
+  card.classList.toggle("has-member-link", Boolean(member.profile_url));
   card.draggable = isAdminActive() && canMoveMembers;
   card.dataset.memberId = member.id;
   card.style.borderLeftColor = roster.color || "#4cb8ff";
@@ -1180,6 +1182,7 @@ function createMemberCard(member, roster) {
     <div class="member-meta">
       ${member.role ? `<span>${escapeHtml(member.role)}</span>` : ""}
       ${member.level ? `<span>${escapeHtml(member.level)}</span>` : ""}
+      ${member.profile_url ? "<span>Lien</span>" : ""}
     </div>
   `;
 
@@ -1197,6 +1200,18 @@ function createMemberCard(member, roster) {
   card.addEventListener("dragend", () => {
     card.classList.remove("is-dragging");
     draggedMemberId = null;
+  });
+
+  card.addEventListener("click", (event) => {
+    if (isAdminActive() || !member.profile_url || event.target.closest("button")) {
+      return;
+    }
+
+    const safeUrl = normalizeMemberUrl(member.profile_url);
+
+    if (safeUrl) {
+      window.open(safeUrl, "_blank", "noopener,noreferrer");
+    }
   });
 
   card.querySelector(".member-edit")?.addEventListener("click", () => showMemberForm({ member }));
@@ -1226,6 +1241,7 @@ function showMemberForm({ member = null, rosterId = null } = {}) {
   memberForm.elements["member-name"].value = member ? member.name : "";
   memberForm.elements["member-role"].value = member ? member.role || "" : "";
   memberForm.elements["member-level"].value = member ? member.level || "" : "";
+  memberForm.elements["member-link"].value = member ? member.profile_url || "" : "";
   memberForm.elements["member-roster"].value = member ? member.roster_id : rosterId || rosters[0]?.id || "";
   memberForm.elements["member-name"].focus();
 }
@@ -1327,6 +1343,7 @@ async function saveMember(member) {
     p_sort_order: member.sort_order || 0,
     p_admin_name: adminContext.name,
     p_admin_code: adminContext.code,
+    p_profile_url: member.profile_url || "",
   });
 
   if (error) {
@@ -2207,6 +2224,21 @@ function formatLogDetails(log) {
   }
 
   return JSON.stringify(log.details || {}, null, 2);
+}
+
+function normalizeMemberUrl(url) {
+  const value = String(url || "").trim();
+
+  if (!value) {
+    return "";
+  }
+
+  try {
+    const parsedUrl = new URL(value);
+    return ["http:", "https:"].includes(parsedUrl.protocol) ? parsedUrl.href : "";
+  } catch {
+    return "";
+  }
 }
 
 function escapeHtml(value) {

@@ -28,6 +28,9 @@ const adminBackupList = document.querySelector(".admin-backup-list");
 const adminSectionsSection = document.querySelector(".admin-sections-section");
 const adminSectionForm = document.querySelector(".admin-section-form");
 const adminSectionList = document.querySelector(".admin-section-list");
+const adminMembersSection = document.querySelector(".admin-members-section");
+const adminMemberCreateForm = document.querySelector(".admin-member-create-form");
+const adminMemberList = document.querySelector(".admin-member-list");
 const adminLogList = document.querySelector(".admin-log-list");
 const adminLogFilter = document.querySelector(".admin-log-filter");
 const adminClearHistory = document.querySelector(".admin-clear-history");
@@ -306,6 +309,10 @@ if (adminCreateBackup) {
 
 if (adminSectionForm) {
   adminSectionForm.addEventListener("submit", createSiteSectionFromPanel);
+}
+
+if (adminMemberCreateForm) {
+  adminMemberCreateForm.addEventListener("submit", createMemberFromPanel);
 }
 
 if (adminScrollTop) {
@@ -883,6 +890,9 @@ async function loadRosterData() {
   members = memberRows || [];
   writeRosterCache();
   renderRosters();
+  if (adminMembersSection && !adminMembersSection.hidden) {
+    renderPanelMemberTools();
+  }
 }
 
 function seedDefaultRosterData() {
@@ -898,6 +908,9 @@ function seedDefaultRosterData() {
   ];
   members = [];
   renderRosters();
+  if (adminMembersSection && !adminMembersSection.hidden) {
+    renderPanelMemberTools();
+  }
 }
 
 async function loadSiteSections() {
@@ -1461,8 +1474,14 @@ function renderAdminPanelBase() {
     adminPanelSummary.innerHTML = `
       <span>${escapeHtml(context.role === "owner" ? "Owner" : "Admin")} : ${escapeHtml(context.name || "-")}</span>
       <span>${rosters.length} roster${rosters.length > 1 ? "s" : ""}</span>
-      <span>${members.length} membre${members.length > 1 ? "s" : ""}</span>
+      <button class="admin-summary-button" type="button" data-open-panel-section="members">
+        ${members.length} membre${members.length > 1 ? "s" : ""}
+      </button>
     `;
+
+    adminPanelSummary.querySelector("[data-open-panel-section='members']")?.addEventListener("click", () => {
+      openPanelMembersSection();
+    });
   }
 
   if (adminLogList) {
@@ -1491,6 +1510,10 @@ function renderAdminPanelBase() {
 
   if (adminSectionsSection) {
     adminSectionsSection.hidden = !hasPermission("manage_sections");
+  }
+
+  if (adminMembersSection) {
+    adminMembersSection.hidden = true;
   }
 
   if (adminClearHistory) {
@@ -1549,6 +1572,8 @@ async function loadAdminPanelData() {
   if (hasPermission("manage_sections")) {
     renderAdminSections();
   }
+
+  renderPanelMemberTools();
 }
 
 function renderAdminLogs(logs) {
@@ -1808,6 +1833,159 @@ async function deleteCustomSiteSection(card) {
   setSaveStatus("Section supprimee", "saved");
   await loadSiteSections();
   await loadAdminPanelData();
+}
+
+function openPanelMembersSection() {
+  if (!adminMembersSection) {
+    return;
+  }
+
+  adminMembersSection.hidden = false;
+  renderPanelMemberTools();
+  adminMembersSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderPanelMemberTools() {
+  if (!adminMembersSection || !hasPermission("manage_members")) {
+    if (adminMembersSection) {
+      adminMembersSection.hidden = true;
+    }
+    return;
+  }
+
+  renderPanelRosterSelects();
+  renderPanelMemberList();
+}
+
+function renderPanelRosterSelects() {
+  const options = rosters
+    .sort(sortByOrderThenName)
+    .map((roster) => `<option value="${roster.id}">${escapeHtml(roster.name)}</option>`)
+    .join("");
+
+  document.querySelectorAll(".panel-member-roster-select").forEach((select) => {
+    const currentValue = select.value;
+    select.innerHTML = options;
+    select.value = currentValue;
+  });
+
+  const createSelect = adminMemberCreateForm?.querySelector('[name="panel-member-roster"]');
+  if (createSelect) {
+    const currentValue = createSelect.value;
+    createSelect.innerHTML = options;
+    createSelect.value = currentValue || rosters[0]?.id || "";
+  }
+}
+
+function renderPanelMemberList() {
+  if (!adminMemberList) {
+    return;
+  }
+
+  if (members.length === 0) {
+    adminMemberList.innerHTML = "<p>Aucun membre pour le moment.</p>";
+    return;
+  }
+
+  const rosterOptions = rosters
+    .sort(sortByOrderThenName)
+    .map((roster) => `<option value="${roster.id}">${escapeHtml(roster.name)}</option>`)
+    .join("");
+
+  adminMemberList.innerHTML = [...members]
+    .sort(sortByOrderThenName)
+    .map(
+      (member) => `
+        <article class="admin-member-row" data-member-id="${member.id}">
+          <input class="panel-member-name" type="text" value="${escapeHtml(member.name)}" />
+          <input class="panel-member-role" type="text" value="${escapeHtml(member.role || "")}" />
+          <input class="panel-member-level" type="text" value="${escapeHtml(member.level || "")}" />
+          <input class="panel-member-link" type="url" value="${escapeHtml(member.profile_url || "")}" placeholder="https://..." />
+          <select class="panel-member-roster-select">${rosterOptions}</select>
+          <div class="admin-member-actions">
+            <button class="admin-small-action save-panel-member" type="button">✅ Sauver</button>
+            <button class="admin-small-action delete-panel-member" type="button">❌ Supprimer</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+
+  adminMemberList.querySelectorAll(".admin-member-row").forEach((row) => {
+    const member = members.find((item) => item.id === Number(row.dataset.memberId));
+    const select = row.querySelector(".panel-member-roster-select");
+
+    if (member && select) {
+      select.value = member.roster_id;
+    }
+  });
+
+  adminMemberList.querySelectorAll(".save-panel-member").forEach((button) => {
+    button.addEventListener("click", () => saveMemberFromPanel(button.closest(".admin-member-row")));
+  });
+  adminMemberList.querySelectorAll(".delete-panel-member").forEach((button) => {
+    button.addEventListener("click", () => deleteMemberFromPanel(button.closest(".admin-member-row")));
+  });
+}
+
+async function createMemberFromPanel(event) {
+  event.preventDefault();
+
+  const formData = new FormData(adminMemberCreateForm);
+  const rosterId = Number(formData.get("panel-member-roster"));
+  const rosterMembers = members.filter((member) => member.roster_id === rosterId);
+  const name = String(formData.get("panel-member-name") || "").trim();
+
+  if (!name || !rosterId) {
+    setSaveStatus("Pseudo et roster requis", "error");
+    return;
+  }
+
+  await saveMember({
+    id: null,
+    roster_id: rosterId,
+    name,
+    role: String(formData.get("panel-member-role") || "").trim(),
+    level: String(formData.get("panel-member-level") || "").trim(),
+    profile_url: normalizeMemberUrl(formData.get("panel-member-link") || ""),
+    sort_order: rosterMembers.length,
+  });
+
+  adminMemberCreateForm.reset();
+  await loadRosterData();
+  renderPanelMemberTools();
+}
+
+async function saveMemberFromPanel(row) {
+  if (!row) {
+    return;
+  }
+
+  const memberId = Number(row.dataset.memberId);
+  const rosterId = Number(row.querySelector(".panel-member-roster-select")?.value);
+
+  await saveMember({
+    id: memberId,
+    roster_id: rosterId,
+    name: row.querySelector(".panel-member-name")?.value.trim() || "",
+    role: row.querySelector(".panel-member-role")?.value.trim() || "",
+    level: row.querySelector(".panel-member-level")?.value.trim() || "",
+    profile_url: normalizeMemberUrl(row.querySelector(".panel-member-link")?.value || ""),
+    sort_order: getMemberSortOrder(memberId),
+  });
+
+  await loadRosterData();
+  renderPanelMemberTools();
+}
+
+async function deleteMemberFromPanel(row) {
+  if (!row) {
+    return;
+  }
+
+  await deleteMember(Number(row.dataset.memberId));
+  await loadRosterData();
+  renderPanelMemberTools();
 }
 
 async function createAdminFromPanel(event) {

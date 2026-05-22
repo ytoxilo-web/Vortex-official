@@ -375,6 +375,21 @@
           </form>
           <div class="admin-section-list"></div>
         </div>
+        <div class="admin-panel-section admin-members-section" hidden>
+          <div class="admin-panel-heading">
+            <h3>Gestion membres</h3>
+            <p>Modifie les membres, leur roster et leur lien public.</p>
+          </div>
+          <form class="admin-member-create-form">
+            <input name="panel-member-name" type="text" placeholder="Pseudo" />
+            <input name="panel-member-role" type="text" placeholder="Role" />
+            <input name="panel-member-level" type="text" placeholder="Niveau" />
+            <input name="panel-member-link" type="url" placeholder="https://..." />
+            <select name="panel-member-roster"></select>
+            <button class="button compact" type="submit">✅ Ajouter</button>
+          </form>
+          <div class="admin-member-list"></div>
+        </div>
         <div class="admin-panel-section">
           <div class="admin-panel-heading">
             <h3>Historique</h3>

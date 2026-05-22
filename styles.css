@@ -1230,6 +1230,7 @@ p {
   .admin-panel-card > .admin-panel-summary,
   .admin-permissions-section,
   .admin-sections-section,
+  .admin-members-section,
   .admin-panel-close {
     grid-column: 1 / -1;
   }
@@ -1437,14 +1438,23 @@ p {
   gap: 12px;
 }
 
+.admin-members-section {
+  overflow-x: auto;
+}
+
+.admin-member-create-form,
+.admin-member-row {
+  min-width: 1080px;
+}
+
 .admin-member-create-form {
-  grid-template-columns: minmax(160px, 1fr) minmax(130px, 0.8fr) minmax(130px, 0.8fr) minmax(220px, 1.2fr) minmax(150px, 0.8fr) auto;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr) minmax(260px, 1.5fr) minmax(160px, 0.8fr) minmax(120px, auto);
   margin-bottom: 16px;
 }
 
 .admin-member-row {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) minmax(130px, 0.75fr) minmax(130px, 0.75fr) minmax(220px, 1.2fr) minmax(150px, 0.8fr) auto;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr) minmax(260px, 1.5fr) minmax(160px, 0.8fr) minmax(130px, auto);
   gap: 10px;
   align-items: center;
   border: 1px solid var(--line);
@@ -1473,9 +1483,13 @@ p {
 }
 
 .admin-member-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 8px;
+}
+
+.admin-member-actions .admin-small-action {
+  width: 100%;
 }
 
 .admin-permission-card {
@@ -1714,6 +1728,7 @@ p {
 
   .admin-member-create-form,
   .admin-member-row {
+    min-width: 0;
     grid-template-columns: 1fr 1fr;
   }
 
@@ -1824,6 +1839,7 @@ p {
 
   .admin-member-create-form,
   .admin-member-row {
+    min-width: 0;
     grid-template-columns: 1fr;
   }
 

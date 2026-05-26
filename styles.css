@@ -678,6 +678,62 @@ p {
   text-transform: uppercase;
 }
 
+.discord-role-check {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  border: 1px solid rgba(125, 227, 255, 0.24);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: rgba(15, 27, 42, 0.72);
+}
+
+.discord-role-check strong {
+  display: block;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.discord-role-check p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.discord-role-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.discord-role-status {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d7e7f6;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.discord-role-status.is-success {
+  border-color: rgba(60, 220, 150, 0.45);
+  background: rgba(60, 220, 150, 0.1);
+}
+
+.discord-role-status.is-warning {
+  border-color: rgba(255, 200, 87, 0.5);
+  background: rgba(255, 200, 87, 0.1);
+}
+
+.discord-role-status small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .criteria h3 {
   color: #ffffff;
 }

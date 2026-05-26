@@ -44,6 +44,10 @@ const addRosterButton = document.querySelector(".add-roster-button");
 const memberForm = document.querySelector(".member-form");
 const cancelMemberEdit = document.querySelector(".cancel-member-edit");
 const memberRosterSelect = document.querySelector('[name="member-roster"]');
+const discordConnectButton = document.querySelector(".discord-connect");
+const discordSyncButton = document.querySelector(".discord-sync");
+const discordLogoutButton = document.querySelector(".discord-logout");
+const discordRoleStatus = document.querySelector(".discord-role-status");
 
 const CACHE_KEY = "vortex-site-content-cache";
 const ROSTER_CACHE_KEY = "vortex-roster-cache";
@@ -215,6 +219,7 @@ loadPublicBanners();
 subscribeToContentChanges();
 subscribeToRosterChanges();
 initRevealAnimation();
+initDiscordAuth();
 
 if (adminButton) {
   adminButton.addEventListener("click", () => {
@@ -380,11 +385,190 @@ if (cancelMemberEdit) {
   cancelMemberEdit.addEventListener("click", hideMemberForm);
 }
 
+if (discordConnectButton) {
+  discordConnectButton.addEventListener("click", startDiscordLogin);
+}
+
+if (discordSyncButton) {
+  discordSyncButton.addEventListener("click", syncDiscordRoles);
+}
+
+if (discordLogoutButton) {
+  discordLogoutButton.addEventListener("click", signOutDiscord);
+}
+
 if (isAdminActive()) {
   enableAdminMode();
 }
 
 setInterval(checkAdminSessionStillValid, 30000);
+
+async function initDiscordAuth() {
+  if (!discordRoleStatus) {
+    return;
+  }
+
+  if (!supabaseClient || !supabaseClient.auth) {
+    renderDiscordStatus(null, null, "Supabase doit etre configure pour verifier les roles Discord.");
+    return;
+  }
+
+  const { data } = await supabaseClient.auth.getSession();
+  await handleDiscordSession(data.session || null);
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    handleDiscordSession(session || null);
+  });
+}
+
+async function handleDiscordSession(session) {
+  if (!session) {
+    renderDiscordStatus(null, null, "Non connecte.");
+    return;
+  }
+
+  const profile = await loadDiscordProfile();
+  renderDiscordStatus(session.user, profile);
+
+  if (!profile) {
+    await syncDiscordRoles();
+  }
+}
+
+async function startDiscordLogin() {
+  if (!supabaseClient || !supabaseClient.auth) {
+    renderDiscordStatus(null, null, "Supabase n'est pas configure.");
+    return;
+  }
+
+  setDiscordStatusText("Redirection vers Discord...");
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: "discord",
+    options: {
+      redirectTo,
+      scopes: "identify",
+    },
+  });
+
+  if (error) {
+    console.error("Connexion Discord impossible.", error);
+    setDiscordStatusText("Connexion Discord impossible.");
+  }
+}
+
+async function syncDiscordRoles() {
+  if (!supabaseClient || !supabaseClient.auth) {
+    setDiscordStatusText("Supabase n'est pas configure.");
+    return;
+  }
+
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+
+  if (!sessionData.session) {
+    await startDiscordLogin();
+    return;
+  }
+
+  setDiscordStatusText("Verification des roles Discord...");
+  const { data, error } = await supabaseClient.functions.invoke("sync-discord-roles", {
+    method: "POST",
+  });
+
+  if (error) {
+    console.error("Synchronisation Discord impossible.", error);
+    setDiscordStatusText("Impossible de verifier les roles Discord.");
+    return;
+  }
+
+  renderDiscordStatus(sessionData.session.user, data?.profile || null);
+}
+
+async function signOutDiscord() {
+  if (!supabaseClient || !supabaseClient.auth) {
+    return;
+  }
+
+  await supabaseClient.auth.signOut();
+  renderDiscordStatus(null, null, "Deconnecte.");
+}
+
+async function loadDiscordProfile() {
+  if (!supabaseClient) {
+    return null;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("discord_profiles")
+    .select("discord_user_id, username, avatar_url, is_server_member, role_names, matched_role_keys, synced_at")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Profil Discord impossible a charger.", error);
+    return null;
+  }
+
+  return data || null;
+}
+
+function renderDiscordStatus(user, profile, fallbackMessage = "") {
+  const isConnected = Boolean(user);
+
+  if (discordConnectButton) {
+    discordConnectButton.hidden = isConnected;
+  }
+
+  if (discordSyncButton) {
+    discordSyncButton.hidden = !isConnected;
+  }
+
+  if (discordLogoutButton) {
+    discordLogoutButton.hidden = !isConnected;
+  }
+
+  if (!discordRoleStatus) {
+    return;
+  }
+
+  if (!isConnected) {
+    discordRoleStatus.textContent = fallbackMessage || "Non connecte.";
+    discordRoleStatus.classList.remove("is-success", "is-warning");
+    return;
+  }
+
+  if (!profile) {
+    discordRoleStatus.textContent = "Compte Discord connecte. Roles pas encore synchronises.";
+    discordRoleStatus.classList.remove("is-success");
+    discordRoleStatus.classList.add("is-warning");
+    return;
+  }
+
+  if (!profile.is_server_member) {
+    discordRoleStatus.textContent = "Compte Discord connecte, mais ce compte n'est pas detecte sur le serveur VTX.";
+    discordRoleStatus.classList.remove("is-success");
+    discordRoleStatus.classList.add("is-warning");
+    return;
+  }
+
+  const roles = profile.role_names?.length ? profile.role_names : profile.matched_role_keys || [];
+  const syncedAt = profile.synced_at ? new Date(profile.synced_at).toLocaleString("fr-FR") : "";
+  discordRoleStatus.innerHTML = `
+    <span>Connecte : ${escapeHtml(profile.username || "Discord")}</span>
+    <span>Roles : ${roles.length ? roles.map(escapeHtml).join(", ") : "aucun role public detecte"}</span>
+    ${syncedAt ? `<small>Derniere verification : ${escapeHtml(syncedAt)}</small>` : ""}
+  `;
+  discordRoleStatus.classList.add("is-success");
+  discordRoleStatus.classList.remove("is-warning");
+}
+
+function setDiscordStatusText(message) {
+  if (!discordRoleStatus) {
+    return;
+  }
+
+  discordRoleStatus.textContent = message;
+  discordRoleStatus.classList.remove("is-success", "is-warning");
+}
 
 function createSupabaseClient() {
   const config = window.VORTEX_SUPABASE || {};

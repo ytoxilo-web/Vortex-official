@@ -49,7 +49,15 @@ const discordSyncButton = document.querySelector(".discord-sync");
 const discordLogoutButton = document.querySelector(".discord-logout");
 const discordRoleStatus = document.querySelector(".discord-role-status");
 const privateRosterLinks = document.querySelectorAll(".private-roster-link");
-const privateRosterSections = document.querySelectorAll(".private-roster-section");
+const rosterPanelModal = document.querySelector(".roster-panel-modal");
+const rosterPanelClose = document.querySelector(".roster-panel-close");
+const rosterPanelTitle = document.querySelector("#roster-panel-title");
+const rosterPanelSubtitle = document.querySelector(".roster-panel-subtitle");
+const rosterPanelContent = document.querySelector(".roster-panel-content");
+const rosterPanelTabs = document.querySelectorAll("[data-roster-tab]");
+const rosterConfigToggle = document.querySelector(".roster-config-toggle");
+const rosterConfigPanel = document.querySelector(".roster-config-panel");
+const rosterConfigCancel = document.querySelector(".roster-config-cancel");
 
 const CACHE_KEY = "vortex-site-content-cache";
 const ROSTER_CACHE_KEY = "vortex-roster-cache";
@@ -160,6 +168,33 @@ let publicBanners = [];
 let draggedMemberId = null;
 let saveStatusTimer = null;
 let pendingAdminCode = "";
+let currentDiscordProfile = null;
+let currentRosterPanelKey = "";
+let currentRosterPanelTab = "overview";
+
+const ROSTER_PANEL_STORAGE_KEY = "vortex-private-roster-panels";
+const ROSTER_PANEL_CONFIG = {
+  a: { title: "Roster A", roleKey: "roster_a", accent: "#4cb8ff" },
+  b: { title: "Roster B", roleKey: "roster_b", accent: "#7de3ff" },
+  c: { title: "Roster C", roleKey: "roster_c", accent: "#ffc857" },
+};
+const defaultRosterPanels = {
+  a: {
+    announcement: "Briefing Roster A a completer par les owners.",
+    scrim: "Aucun scrim planifie.",
+    event: "Aucun evenement planifie.",
+  },
+  b: {
+    announcement: "Briefing Roster B a completer par les owners.",
+    scrim: "Aucun scrim planifie.",
+    event: "Aucun evenement planifie.",
+  },
+  c: {
+    announcement: "Briefing Roster C a completer par les owners.",
+    scrim: "Aucun scrim planifie.",
+    event: "Aucun evenement planifie.",
+  },
+};
 
 if (navToggle && nav) {
   navToggle.addEventListener("click", () => {
@@ -399,6 +434,55 @@ if (discordLogoutButton) {
   discordLogoutButton.addEventListener("click", signOutDiscord);
 }
 
+privateRosterLinks.forEach((button) => {
+  button.addEventListener("click", () => openRosterPanel(button.dataset.rosterKey || ""));
+});
+
+if (rosterPanelClose) {
+  rosterPanelClose.addEventListener("click", closeRosterPanel);
+}
+
+if (rosterPanelModal) {
+  rosterPanelModal.addEventListener("click", (event) => {
+    if (event.target === rosterPanelModal) {
+      closeRosterPanel();
+    }
+  });
+}
+
+rosterPanelTabs.forEach((button) => {
+  button.addEventListener("click", () => {
+    currentRosterPanelTab = button.dataset.rosterTab || "overview";
+    renderRosterPanel();
+  });
+});
+
+if (rosterConfigToggle) {
+  rosterConfigToggle.addEventListener("click", () => {
+    if (!rosterConfigPanel) {
+      return;
+    }
+
+    rosterConfigPanel.hidden = !rosterConfigPanel.hidden;
+    fillRosterConfigForm();
+  });
+}
+
+if (rosterConfigCancel) {
+  rosterConfigCancel.addEventListener("click", () => {
+    if (rosterConfigPanel) {
+      rosterConfigPanel.hidden = true;
+    }
+  });
+}
+
+if (rosterConfigPanel) {
+  rosterConfigPanel.addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveRosterPanelConfig();
+  });
+}
+
 if (isAdminActive()) {
   enableAdminMode();
 }
@@ -425,12 +509,14 @@ async function initDiscordAuth() {
 
 async function handleDiscordSession(session) {
   if (!session) {
+    currentDiscordProfile = null;
     updatePrivateRosterAccess(null);
     renderDiscordStatus(null, null, "Non connecte.");
     return;
   }
 
   const profile = await loadDiscordProfile();
+  currentDiscordProfile = profile;
   updatePrivateRosterAccess(profile);
   renderDiscordStatus(session.user, profile);
 
@@ -485,8 +571,9 @@ async function syncDiscordRoles() {
     return;
   }
 
-  updatePrivateRosterAccess(data?.profile || null);
-  renderDiscordStatus(sessionData.session.user, data?.profile || null);
+  currentDiscordProfile = data?.profile || null;
+  updatePrivateRosterAccess(currentDiscordProfile);
+  renderDiscordStatus(sessionData.session.user, currentDiscordProfile);
 }
 
 async function signOutDiscord() {
@@ -575,21 +662,211 @@ function updatePrivateRosterAccess(profile) {
     link.hidden = !roleKey || !(roleKeys.has(roleKey) || hasOwnerAccess);
   });
 
-  privateRosterSections.forEach((section) => {
-    const roleKey = section.dataset.rosterRole;
-    section.hidden = !roleKey || !(roleKeys.has(roleKey) || hasOwnerAccess);
+  if (currentRosterPanelKey && !canAccessRosterPanel(currentRosterPanelKey)) {
+    closeRosterPanel();
+    setDiscordStatusText("Connecte-toi avec le role Discord du roster pour acceder a cet espace.");
+    discordRoleStatus?.classList.add("is-warning");
+  }
+}
+
+function canAccessRosterPanel(rosterKey) {
+  const config = ROSTER_PANEL_CONFIG[rosterKey];
+  const roleKeys = new Set(currentDiscordProfile?.matched_role_keys || []);
+  return Boolean(config && (roleKeys.has(config.roleKey) || roleKeys.has("owner")));
+}
+
+function isRosterOwner() {
+  return new Set(currentDiscordProfile?.matched_role_keys || []).has("owner");
+}
+
+function openRosterPanel(rosterKey) {
+  if (!canAccessRosterPanel(rosterKey)) {
+    setDiscordStatusText("Tu n'as pas le role Discord requis pour ce roster.");
+    discordRoleStatus?.classList.add("is-warning");
+    return;
+  }
+
+  currentRosterPanelKey = rosterKey;
+  currentRosterPanelTab = "overview";
+
+  if (rosterPanelModal) {
+    rosterPanelModal.classList.add("is-open");
+    rosterPanelModal.setAttribute("aria-hidden", "false");
+  }
+
+  if (rosterConfigPanel) {
+    rosterConfigPanel.hidden = true;
+  }
+
+  renderRosterPanel();
+}
+
+function closeRosterPanel() {
+  if (!rosterPanelModal) {
+    return;
+  }
+
+  rosterPanelModal.classList.remove("is-open");
+  rosterPanelModal.setAttribute("aria-hidden", "true");
+  currentRosterPanelKey = "";
+}
+
+function renderRosterPanel() {
+  const config = ROSTER_PANEL_CONFIG[currentRosterPanelKey];
+
+  if (!config || !rosterPanelContent) {
+    return;
+  }
+
+  const data = readRosterPanelData()[currentRosterPanelKey] || defaultRosterPanels[currentRosterPanelKey];
+  const rosterMembers = getRosterMembersForPanel(config.title);
+
+  if (rosterPanelTitle) {
+    rosterPanelTitle.textContent = config.title;
+  }
+
+  if (rosterPanelSubtitle) {
+    rosterPanelSubtitle.textContent = `${rosterMembers.length} membre${rosterMembers.length > 1 ? "s" : ""} detecte${rosterMembers.length > 1 ? "s" : ""} dans ${config.title}.`;
+  }
+
+  if (rosterPanelModal) {
+    rosterPanelModal.style.setProperty("--roster-accent", config.accent);
+  }
+
+  if (rosterConfigToggle) {
+    rosterConfigToggle.hidden = !isRosterOwner();
+  }
+
+  rosterPanelTabs.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.rosterTab === currentRosterPanelTab);
   });
 
-  if (window.location.hash) {
-    const target = document.querySelector(window.location.hash);
-    const targetRole = target?.dataset?.rosterRole;
+  rosterPanelContent.innerHTML = getRosterPanelMarkup(currentRosterPanelTab, config, data, rosterMembers);
+}
 
-    if (targetRole && !(roleKeys.has(targetRole) || hasOwnerAccess)) {
-      window.location.hash = "#recrutement";
-      setDiscordStatusText("Connecte-toi avec le role Discord du roster pour acceder a cet espace.");
-      discordRoleStatus?.classList.add("is-warning");
-    }
+function getRosterPanelMarkup(tab, config, data, rosterMembers) {
+  const memberCards = rosterMembers.length
+    ? rosterMembers
+        .map(
+          (member) => `
+            <article class="roster-panel-member">
+              <strong>${escapeHtml(member.name)}</strong>
+              <span>${escapeHtml([member.role, member.level].filter(Boolean).join(" - ") || "Membre roster")}</span>
+            </article>
+          `
+        )
+        .join("")
+    : '<p class="roster-panel-empty">Aucun membre charge pour ce roster.</p>';
+
+  const panels = {
+    overview: `
+      <div class="roster-panel-layout">
+        <article class="roster-panel-feature">
+          <span>Annonce</span>
+          <strong>${escapeHtml(data.announcement)}</strong>
+        </article>
+        <article class="roster-panel-feature">
+          <span>Prochain scrim</span>
+          <strong>${escapeHtml(data.scrim)}</strong>
+        </article>
+        <article class="roster-panel-feature">
+          <span>Evenement</span>
+          <strong>${escapeHtml(data.event)}</strong>
+        </article>
+      </div>
+      <div class="roster-panel-section-grid">
+        <section>
+          <h3>Membres ${escapeHtml(config.title)}</h3>
+          <div class="roster-panel-members">${memberCards}</div>
+        </section>
+        <section>
+          <h3>Priorites</h3>
+          <ul class="roster-panel-list">
+            <li>Confirmer les disponibilites avant chaque scrim.</li>
+            <li>Centraliser les compos et retours importants.</li>
+            <li>Garder les annonces roster au meme endroit.</li>
+          </ul>
+        </section>
+      </div>
+    `,
+    scrims: `
+      <section class="roster-panel-wide">
+        <h3>Scrims</h3>
+        <article class="roster-panel-entry">
+          <strong>${escapeHtml(data.scrim)}</strong>
+          <p>Ajoute ici l'adversaire, l'heure, les maps, les bans et le lien vocal.</p>
+        </article>
+      </section>
+    `,
+    announcements: `
+      <section class="roster-panel-wide">
+        <h3>Annonces</h3>
+        <article class="roster-panel-entry">
+          <strong>${escapeHtml(data.announcement)}</strong>
+          <p>Message important visible uniquement pour les membres autorises du roster.</p>
+        </article>
+      </section>
+    `,
+    events: `
+      <section class="roster-panel-wide">
+        <h3>Evenements</h3>
+        <article class="roster-panel-entry">
+          <strong>${escapeHtml(data.event)}</strong>
+          <p>Ajoute ici les tournois, reunions, deadlines ou rendez-vous du roster.</p>
+        </article>
+      </section>
+    `,
+  };
+
+  return panels[tab] || panels.overview;
+}
+
+function fillRosterConfigForm() {
+  if (!rosterConfigPanel || !currentRosterPanelKey) {
+    return;
   }
+
+  const data = readRosterPanelData()[currentRosterPanelKey] || defaultRosterPanels[currentRosterPanelKey];
+  rosterConfigPanel.elements.announcement.value = data.announcement || "";
+  rosterConfigPanel.elements.scrim.value = data.scrim || "";
+  rosterConfigPanel.elements.event.value = data.event || "";
+}
+
+function saveRosterPanelConfig() {
+  if (!isRosterOwner() || !rosterConfigPanel || !currentRosterPanelKey) {
+    return;
+  }
+
+  const allData = readRosterPanelData();
+  allData[currentRosterPanelKey] = {
+    announcement: rosterConfigPanel.elements.announcement.value.trim() || "Aucune annonce.",
+    scrim: rosterConfigPanel.elements.scrim.value.trim() || "Aucun scrim planifie.",
+    event: rosterConfigPanel.elements.event.value.trim() || "Aucun evenement planifie.",
+  };
+  localStorage.setItem(ROSTER_PANEL_STORAGE_KEY, JSON.stringify(allData));
+  rosterConfigPanel.hidden = true;
+  renderRosterPanel();
+}
+
+function readRosterPanelData() {
+  try {
+    return {
+      ...defaultRosterPanels,
+      ...(JSON.parse(localStorage.getItem(ROSTER_PANEL_STORAGE_KEY)) || {}),
+    };
+  } catch {
+    return { ...defaultRosterPanels };
+  }
+}
+
+function getRosterMembersForPanel(rosterTitle) {
+  const roster = rosters.find((item) => String(item.name).toLowerCase() === rosterTitle.toLowerCase());
+
+  if (!roster) {
+    return [];
+  }
+
+  return members.filter((member) => member.roster_id === roster.id).sort(sortByOrderThenName);
 }
 
 function setDiscordStatusText(message) {

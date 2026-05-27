@@ -54,9 +54,9 @@
           <a href="#objectifs">Objectifs</a>
           <a href="#recrutement">Recrutement</a>
           <a href="#membres">Membre</a>
-          <a class="private-roster-link" href="#roster-a" data-roster-role="roster_a" hidden>Roster A</a>
-          <a class="private-roster-link" href="#roster-b" data-roster-role="roster_b" hidden>Roster B</a>
-          <a class="private-roster-link" href="#roster-c" data-roster-role="roster_c" hidden>Roster C</a>
+          <button class="private-roster-link" type="button" data-roster-key="a" data-roster-role="roster_a" hidden>Roster A</button>
+          <button class="private-roster-link" type="button" data-roster-key="b" data-roster-role="roster_b" hidden>Roster B</button>
+          <button class="private-roster-link" type="button" data-roster-key="c" data-roster-role="roster_c" hidden>Roster C</button>
           <a href="#faq">FAQ</a>
           <button class="admin-nav-button" type="button">Admin</button>
         </nav>
@@ -270,63 +270,6 @@
 
         <div class="custom-sections" data-static></div>
 
-        <section class="section private-roster-section" id="roster-a" data-static data-roster-role="roster_a" hidden>
-          <div class="section-heading">
-            <p class="eyebrow">Espace prive</p>
-            <h2>Roster A</h2>
-            <p>Zone reservee aux membres ayant le role Discord Roster A.</p>
-          </div>
-
-          <div class="private-roster-grid">
-            <article>
-              <strong>Informations</strong>
-              <p>Ajoute ici les annonces, liens de scrim ou consignes propres au Roster A.</p>
-            </article>
-            <article>
-              <strong>Preparation</strong>
-              <p>Utilise cet espace pour centraliser les objectifs et rappels importants du roster.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="section private-roster-section" id="roster-b" data-static data-roster-role="roster_b" hidden>
-          <div class="section-heading">
-            <p class="eyebrow">Espace prive</p>
-            <h2>Roster B</h2>
-            <p>Zone reservee aux membres ayant le role Discord Roster B.</p>
-          </div>
-
-          <div class="private-roster-grid">
-            <article>
-              <strong>Informations</strong>
-              <p>Ajoute ici les annonces, liens de scrim ou consignes propres au Roster B.</p>
-            </article>
-            <article>
-              <strong>Preparation</strong>
-              <p>Utilise cet espace pour centraliser les objectifs et rappels importants du roster.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="section private-roster-section" id="roster-c" data-static data-roster-role="roster_c" hidden>
-          <div class="section-heading">
-            <p class="eyebrow">Espace prive</p>
-            <h2>Roster C</h2>
-            <p>Zone reservee aux membres ayant le role Discord Roster C.</p>
-          </div>
-
-          <div class="private-roster-grid">
-            <article>
-              <strong>Informations</strong>
-              <p>Ajoute ici les annonces, liens de scrim ou consignes propres au Roster C.</p>
-            </article>
-            <article>
-              <strong>Preparation</strong>
-              <p>Utilise cet espace pour centraliser les objectifs et rappels importants du roster.</p>
-            </article>
-          </div>
-        </section>
-
         <section class="section faq" id="faq" data-section-key="faq">
           <div class="section-heading">
             <p class="eyebrow">Questions</p>
@@ -477,6 +420,54 @@
           </div>
           <div class="admin-log-list"></div>
         </div>
+      </div>
+    </div>
+
+    <div class="roster-panel-modal" aria-hidden="true">
+      <div class="roster-panel-card" role="dialog" aria-modal="true" aria-labelledby="roster-panel-title">
+        <div class="roster-panel-top">
+          <div>
+            <p class="eyebrow">Espace roster</p>
+            <h2 id="roster-panel-title">Roster</h2>
+            <p class="roster-panel-subtitle">Scrims, annonces, evenements et preparation du groupe.</p>
+          </div>
+          <div class="roster-panel-actions">
+            <button class="button compact roster-config-toggle" type="button" hidden>Configurer</button>
+            <button class="icon-button roster-panel-close" type="button" aria-label="Fermer le panel">x</button>
+          </div>
+        </div>
+
+        <div class="roster-panel-tabs" role="tablist" aria-label="Sections roster">
+          <button class="is-active" type="button" data-roster-tab="overview">Vue globale</button>
+          <button type="button" data-roster-tab="scrims">Scrims</button>
+          <button type="button" data-roster-tab="announcements">Annonces</button>
+          <button type="button" data-roster-tab="events">Evenements</button>
+        </div>
+
+        <div class="roster-panel-content"></div>
+
+        <form class="roster-config-panel" hidden>
+          <div class="roster-config-heading">
+            <h3>Configuration owner</h3>
+            <p>Ces champs preparent le contenu du panel. Pour le rendre persistant pour tout le monde, il faudra ensuite le connecter a Supabase.</p>
+          </div>
+          <label>
+            Annonce importante
+            <textarea name="announcement" rows="3" placeholder="Message important du roster"></textarea>
+          </label>
+          <label>
+            Prochain scrim
+            <input name="scrim" type="text" placeholder="Ex : Vendredi 21h vs Team Alpha" />
+          </label>
+          <label>
+            Prochain evenement
+            <input name="event" type="text" placeholder="Ex : Tournoi dimanche 18h" />
+          </label>
+          <div class="roster-config-actions">
+            <button class="button primary" type="submit">Appliquer</button>
+            <button class="button ghost roster-config-cancel" type="button">Fermer</button>
+          </div>
+        </form>
       </div>
     </div>
 

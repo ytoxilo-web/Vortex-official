@@ -788,50 +788,20 @@ p {
 }
 
 .private-roster-link[hidden],
-.private-roster-section[hidden] {
+.roster-config-panel[hidden] {
   display: none;
 }
 
 .private-roster-link {
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
   border: 1px solid rgba(125, 227, 255, 0.28);
   border-radius: 6px;
   padding: 8px 10px;
   background: rgba(125, 227, 255, 0.08);
-}
-
-.private-roster-section {
-  border-top: 1px solid rgba(125, 227, 255, 0.18);
-  border-bottom: 1px solid rgba(125, 227, 255, 0.18);
-  background:
-    linear-gradient(135deg, rgba(76, 184, 255, 0.08), rgba(255, 200, 87, 0.05)),
-    rgba(10, 19, 31, 0.72);
-}
-
-.private-roster-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.private-roster-grid article {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 20px;
-  background: rgba(21, 35, 53, 0.92);
-}
-
-.private-roster-grid strong {
-  display: block;
-  margin-bottom: 8px;
-  color: #ffffff;
-  font-size: 1rem;
-  font-weight: 900;
-}
-
-.private-roster-grid p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.6;
 }
 
 .roster-board {
@@ -1242,6 +1212,231 @@ p {
 
 .admin-panel-modal.is-open {
   display: grid;
+}
+
+.roster-panel-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 68;
+  display: none;
+  place-items: center;
+  padding: 18px;
+  background: rgba(5, 11, 18, 0.78);
+  backdrop-filter: blur(12px);
+}
+
+.roster-panel-modal.is-open {
+  display: grid;
+}
+
+.roster-panel-card {
+  --roster-accent: var(--cyan);
+  width: min(1380px, calc(100vw - 24px));
+  max-height: min(920px, calc(100vh - 24px));
+  overflow: auto;
+  border: 1px solid rgba(125, 227, 255, 0.28);
+  border-radius: var(--radius);
+  padding: 34px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--roster-accent) 18%, transparent), transparent 45%),
+    #142235;
+  box-shadow: var(--shadow);
+}
+
+.roster-panel-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.roster-panel-top h2 {
+  margin: 4px 0 6px;
+  color: #ffffff;
+  font-size: clamp(2rem, 6vw, 4.5rem);
+  line-height: 0.95;
+  font-weight: 900;
+}
+
+.roster-panel-subtitle {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.roster-panel-actions,
+.roster-config-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.roster-panel-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+
+.roster-panel-tabs button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #d7e7f6;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.roster-panel-tabs button.is-active {
+  border-color: var(--roster-accent);
+  background: rgba(125, 227, 255, 0.12);
+  color: #ffffff;
+}
+
+.roster-panel-content {
+  min-height: 360px;
+  margin-top: 18px;
+}
+
+.roster-panel-layout,
+.roster-panel-section-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.roster-panel-section-grid {
+  grid-template-columns: 1.2fr 0.8fr;
+  margin-top: 14px;
+}
+
+.roster-panel-feature,
+.roster-panel-section-grid section,
+.roster-panel-wide,
+.roster-panel-entry {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  background: rgba(21, 35, 53, 0.84);
+}
+
+.roster-panel-feature {
+  min-height: 150px;
+}
+
+.roster-panel-feature span {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--roster-accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.roster-panel-feature strong,
+.roster-panel-entry strong {
+  color: #ffffff;
+  font-size: 1.08rem;
+  line-height: 1.35;
+}
+
+.roster-panel-section-grid h3,
+.roster-panel-wide h3 {
+  margin: 0 0 14px;
+  color: #ffffff;
+  font-size: 1.1rem;
+}
+
+.roster-panel-members {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.roster-panel-member {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--roster-accent);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.roster-panel-member strong,
+.roster-panel-member span {
+  display: block;
+}
+
+.roster-panel-member strong {
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.roster-panel-member span,
+.roster-panel-entry p,
+.roster-panel-list,
+.roster-panel-empty {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.roster-panel-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.roster-config-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 18px;
+  border: 1px solid rgba(255, 200, 87, 0.34);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: rgba(255, 200, 87, 0.08);
+}
+
+.roster-config-heading,
+.roster-config-panel label:first-of-type,
+.roster-config-actions {
+  grid-column: 1 / -1;
+}
+
+.roster-config-heading h3 {
+  margin: 0 0 4px;
+  color: #ffffff;
+}
+
+.roster-config-heading p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.roster-config-panel label {
+  display: grid;
+  gap: 8px;
+  color: #d7e7f6;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.roster-config-panel input,
+.roster-config-panel textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font: inherit;
+  outline: none;
 }
 
 .admin-panel-card {
@@ -1892,9 +2087,13 @@ p {
 
   .timeline,
   .community-grid,
-  .private-roster-grid,
   .roster-board {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .roster-panel-layout,
+  .roster-panel-section-grid {
+    grid-template-columns: 1fr;
   }
 
   .roster-top,
@@ -1923,7 +2122,8 @@ p {
     padding: 10px;
   }
 
-  .admin-panel-card {
+  .admin-panel-card,
+  .roster-panel-card {
     width: 100%;
     max-height: calc(100vh - 20px);
     padding: 18px;
@@ -1978,9 +2178,25 @@ p {
 
   .timeline,
   .community-grid,
-  .private-roster-grid,
   .roster-board {
     grid-template-columns: 1fr;
+  }
+
+  .roster-panel-top,
+  .roster-panel-actions,
+  .roster-config-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .roster-panel-tabs button,
+  .roster-config-panel,
+  .roster-panel-members {
+    grid-template-columns: 1fr;
+  }
+
+  .roster-panel-tabs button {
+    width: 100%;
   }
 
   .roster-top,

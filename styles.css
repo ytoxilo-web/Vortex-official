@@ -792,6 +792,10 @@ p {
   display: none;
 }
 
+.private-roster-section {
+  display: none !important;
+}
+
 .private-roster-link {
   color: #ffffff;
   font: inherit;

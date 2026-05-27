@@ -58,6 +58,7 @@ const rosterPanelTabs = document.querySelectorAll("[data-roster-tab]");
 const rosterConfigToggle = document.querySelector(".roster-config-toggle");
 const rosterConfigPanel = document.querySelector(".roster-config-panel");
 const rosterConfigCancel = document.querySelector(".roster-config-cancel");
+const legacyPrivateRosterSections = document.querySelectorAll(".private-roster-section");
 
 const CACHE_KEY = "vortex-site-content-cache";
 const ROSTER_CACHE_KEY = "vortex-roster-cache";
@@ -257,6 +258,7 @@ subscribeToContentChanges();
 subscribeToRosterChanges();
 initRevealAnimation();
 initDiscordAuth();
+removeLegacyRosterSections();
 
 if (adminButton) {
   adminButton.addEventListener("click", () => {
@@ -435,7 +437,10 @@ if (discordLogoutButton) {
 }
 
 privateRosterLinks.forEach((button) => {
-  button.addEventListener("click", () => openRosterPanel(button.dataset.rosterKey || ""));
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    openRosterPanel(button.dataset.rosterKey || getRosterKeyFromRole(button.dataset.rosterRole || ""));
+  });
 });
 
 if (rosterPanelClose) {
@@ -673,6 +678,16 @@ function canAccessRosterPanel(rosterKey) {
   const config = ROSTER_PANEL_CONFIG[rosterKey];
   const roleKeys = new Set(currentDiscordProfile?.matched_role_keys || []);
   return Boolean(config && (roleKeys.has(config.roleKey) || roleKeys.has("owner")));
+}
+
+function getRosterKeyFromRole(roleKey) {
+  return Object.entries(ROSTER_PANEL_CONFIG).find(([, config]) => config.roleKey === roleKey)?.[0] || "";
+}
+
+function removeLegacyRosterSections() {
+  legacyPrivateRosterSections.forEach((section) => {
+    section.remove();
+  });
 }
 
 function isRosterOwner() {

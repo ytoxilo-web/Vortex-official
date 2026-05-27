@@ -787,6 +787,53 @@ p {
   font-weight: 900;
 }
 
+.private-roster-link[hidden],
+.private-roster-section[hidden] {
+  display: none;
+}
+
+.private-roster-link {
+  border: 1px solid rgba(125, 227, 255, 0.28);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: rgba(125, 227, 255, 0.08);
+}
+
+.private-roster-section {
+  border-top: 1px solid rgba(125, 227, 255, 0.18);
+  border-bottom: 1px solid rgba(125, 227, 255, 0.18);
+  background:
+    linear-gradient(135deg, rgba(76, 184, 255, 0.08), rgba(255, 200, 87, 0.05)),
+    rgba(10, 19, 31, 0.72);
+}
+
+.private-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.private-roster-grid article {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  background: rgba(21, 35, 53, 0.92);
+}
+
+.private-roster-grid strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.private-roster-grid p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .roster-board {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1845,6 +1892,7 @@ p {
 
   .timeline,
   .community-grid,
+  .private-roster-grid,
   .roster-board {
     grid-template-columns: 1fr 1fr;
   }
@@ -1930,6 +1978,7 @@ p {
 
   .timeline,
   .community-grid,
+  .private-roster-grid,
   .roster-board {
     grid-template-columns: 1fr;
   }

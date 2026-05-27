@@ -48,6 +48,8 @@ const discordConnectButton = document.querySelector(".discord-connect");
 const discordSyncButton = document.querySelector(".discord-sync");
 const discordLogoutButton = document.querySelector(".discord-logout");
 const discordRoleStatus = document.querySelector(".discord-role-status");
+const privateRosterLinks = document.querySelectorAll(".private-roster-link");
+const privateRosterSections = document.querySelectorAll(".private-roster-section");
 
 const CACHE_KEY = "vortex-site-content-cache";
 const ROSTER_CACHE_KEY = "vortex-roster-cache";
@@ -423,11 +425,13 @@ async function initDiscordAuth() {
 
 async function handleDiscordSession(session) {
   if (!session) {
+    updatePrivateRosterAccess(null);
     renderDiscordStatus(null, null, "Non connecte.");
     return;
   }
 
   const profile = await loadDiscordProfile();
+  updatePrivateRosterAccess(profile);
   renderDiscordStatus(session.user, profile);
 
   if (!profile) {
@@ -481,6 +485,7 @@ async function syncDiscordRoles() {
     return;
   }
 
+  updatePrivateRosterAccess(data?.profile || null);
   renderDiscordStatus(sessionData.session.user, data?.profile || null);
 }
 
@@ -559,6 +564,32 @@ function renderDiscordStatus(user, profile, fallbackMessage = "") {
   `;
   discordRoleStatus.classList.add("is-success");
   discordRoleStatus.classList.remove("is-warning");
+}
+
+function updatePrivateRosterAccess(profile) {
+  const roleKeys = new Set(profile?.matched_role_keys || []);
+  const hasOwnerAccess = roleKeys.has("owner");
+
+  privateRosterLinks.forEach((link) => {
+    const roleKey = link.dataset.rosterRole;
+    link.hidden = !roleKey || !(roleKeys.has(roleKey) || hasOwnerAccess);
+  });
+
+  privateRosterSections.forEach((section) => {
+    const roleKey = section.dataset.rosterRole;
+    section.hidden = !roleKey || !(roleKeys.has(roleKey) || hasOwnerAccess);
+  });
+
+  if (window.location.hash) {
+    const target = document.querySelector(window.location.hash);
+    const targetRole = target?.dataset?.rosterRole;
+
+    if (targetRole && !(roleKeys.has(targetRole) || hasOwnerAccess)) {
+      window.location.hash = "#recrutement";
+      setDiscordStatusText("Connecte-toi avec le role Discord du roster pour acceder a cet espace.");
+      discordRoleStatus?.classList.add("is-warning");
+    }
+  }
 }
 
 function setDiscordStatusText(message) {

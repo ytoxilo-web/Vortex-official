@@ -68,6 +68,7 @@ const ADMIN_NAME_SESSION_KEY = "vortex-admin-name";
 const ADMIN_ROLE_SESSION_KEY = "vortex-admin-role";
 const ADMIN_PERMISSIONS_SESSION_KEY = "vortex-admin-permissions";
 const ADMIN_SESSION_VERSION_KEY = "vortex-admin-session-version";
+const ADMIN_AUTH_MODE_SESSION_KEY = "vortex-admin-auth-mode";
 const SAVE_DELAY = 450;
 const PERMISSION_LABELS = {
   edit_content: "✏️ Modifier les textes",
@@ -85,6 +86,7 @@ const PERMISSION_LABELS = {
   manage_sections: "🧩 Gerer les sections",
   force_logout: "🚪 Forcer deconnexion",
 };
+const OWNER_PERMISSIONS = Object.fromEntries(Object.keys(PERMISSION_LABELS).map((key) => [key, true]));
 
 const CONTENT_KEYS = [
   "hero_eyebrow",
@@ -269,6 +271,12 @@ if (adminButton) {
       return;
     }
 
+    if (isRosterOwner()) {
+      storeDiscordOwnerAdminSession();
+      enableAdminMode();
+      return;
+    }
+
     openAdminModal();
   });
 }
@@ -311,6 +319,7 @@ if (adminLogout) {
     sessionStorage.removeItem(ADMIN_ROLE_SESSION_KEY);
     sessionStorage.removeItem(ADMIN_PERMISSIONS_SESSION_KEY);
     sessionStorage.removeItem(ADMIN_SESSION_VERSION_KEY);
+    sessionStorage.removeItem(ADMIN_AUTH_MODE_SESSION_KEY);
     disableAdminMode();
   });
 }
@@ -589,6 +598,14 @@ async function signOutDiscord() {
     return;
   }
 
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_CODE_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_NAME_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_ROLE_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_PERMISSIONS_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_SESSION_VERSION_KEY);
+  sessionStorage.removeItem(ADMIN_AUTH_MODE_SESSION_KEY);
+  disableAdminMode();
   await supabaseClient.auth.signOut();
   renderDiscordStatus(null, null, "Deconnecte.");
 }
@@ -1222,6 +1239,17 @@ function storeAdminSession(session, adminCode) {
   sessionStorage.setItem(ADMIN_ROLE_SESSION_KEY, session.role || "admin");
   sessionStorage.setItem(ADMIN_PERMISSIONS_SESSION_KEY, JSON.stringify(session.permissions || {}));
   sessionStorage.setItem(ADMIN_SESSION_VERSION_KEY, String(session.session_version || 1));
+  sessionStorage.setItem(ADMIN_AUTH_MODE_SESSION_KEY, "code");
+}
+
+function storeDiscordOwnerAdminSession() {
+  sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+  sessionStorage.setItem(ADMIN_CODE_SESSION_KEY, "__discord_owner__");
+  sessionStorage.setItem(ADMIN_NAME_SESSION_KEY, currentDiscordProfile?.username || "Discord owner");
+  sessionStorage.setItem(ADMIN_ROLE_SESSION_KEY, "owner");
+  sessionStorage.setItem(ADMIN_PERMISSIONS_SESSION_KEY, JSON.stringify(OWNER_PERMISSIONS));
+  sessionStorage.setItem(ADMIN_SESSION_VERSION_KEY, "1");
+  sessionStorage.setItem(ADMIN_AUTH_MODE_SESSION_KEY, "discord_owner");
 }
 
 function getAdminContext() {
@@ -1231,6 +1259,7 @@ function getAdminContext() {
     role: sessionStorage.getItem(ADMIN_ROLE_SESSION_KEY) || "admin",
     permissions: readAdminPermissions(),
     sessionVersion: Number(sessionStorage.getItem(ADMIN_SESSION_VERSION_KEY) || 1),
+    authMode: sessionStorage.getItem(ADMIN_AUTH_MODE_SESSION_KEY) || "code",
   };
 }
 
@@ -1261,18 +1290,36 @@ async function checkAdminSessionStillValid() {
     return;
   }
 
+  if (context.authMode === "discord_owner") {
+    const profile = await loadDiscordProfile();
+    currentDiscordProfile = profile;
+
+    if (!profile?.matched_role_keys?.includes("owner")) {
+      clearAdminSession();
+      disableAdminMode();
+      showAdminError("Role owner Discord requis.");
+    }
+
+    return;
+  }
+
   const session = await verifyAdminIdentity(context.name, context.code);
 
   if (!session || Number(session.session_version || 1) !== context.sessionVersion) {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    sessionStorage.removeItem(ADMIN_CODE_SESSION_KEY);
-    sessionStorage.removeItem(ADMIN_NAME_SESSION_KEY);
-    sessionStorage.removeItem(ADMIN_ROLE_SESSION_KEY);
-    sessionStorage.removeItem(ADMIN_PERMISSIONS_SESSION_KEY);
-    sessionStorage.removeItem(ADMIN_SESSION_VERSION_KEY);
+    clearAdminSession();
     disableAdminMode();
     showAdminError("Session admin expiree.");
   }
+}
+
+function clearAdminSession() {
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_CODE_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_NAME_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_ROLE_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_PERMISSIONS_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_SESSION_VERSION_KEY);
+  sessionStorage.removeItem(ADMIN_AUTH_MODE_SESSION_KEY);
 }
 
 function showAdminError(message) {

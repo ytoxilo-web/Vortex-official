@@ -277,7 +277,9 @@ if (adminButton) {
       return;
     }
 
-    openAdminModal();
+    showAdminError("Connecte-toi avec Discord et le role Owner pour acceder au panel admin.");
+    setDiscordStatusText("Role Discord Owner requis pour acceder au panel admin.");
+    discordRoleStatus?.classList.add("is-warning");
   });
 }
 
@@ -296,18 +298,7 @@ if (adminModal) {
 if (adminForm) {
   adminForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-
-    if (!adminCodeInput || !adminCodeInput.value.trim()) {
-      showAdminError("Entre le code admin.");
-      return;
-    }
-
-    pendingAdminCode = adminCodeInput.value.trim();
-    showAdminError("");
-
-    if (adminIdentityStep) {
-      adminIdentityStep.hidden = false;
-    }
+    showAdminError("Les codes admin sont desactives. Utilise Discord avec le role Owner.");
   });
 }
 
@@ -1023,6 +1014,9 @@ async function saveContentToSupabase(contentKey, value) {
 }
 
 async function verifyAdminCode(adminCode) {
+  console.warn("Les codes admin sont desactives.");
+  return false;
+
   if (!supabaseClient) {
     showAdminError("Configure Supabase avant d'utiliser le panel admin.");
     return false;
@@ -1041,6 +1035,9 @@ async function verifyAdminCode(adminCode) {
 }
 
 async function verifyAdminIdentity(adminName, adminCode) {
+  console.warn("Les codes admin sont desactives.");
+  return null;
+
   if (!supabaseClient) {
     showAdminError("Configure Supabase avant d'utiliser le panel admin.");
     return null;
@@ -1146,6 +1143,9 @@ function openAdminModal() {
   if (!adminModal || !adminCodeInput) {
     return;
   }
+
+  showAdminError("Les codes admin sont desactives. Utilise Discord avec le role Owner.");
+  return;
 
   adminModal.classList.add("is-open");
   adminModal.setAttribute("aria-hidden", "false");

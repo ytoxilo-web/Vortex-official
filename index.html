@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=discord-owner-admin-1" />
+    <link rel="stylesheet" href="styles.css?v=discord-owner-only-1" />
   </head>
   <body>
     <div class="welcome-screen" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
@@ -307,12 +307,12 @@
       </footer>
     </div>
 
-    <div class="admin-modal" aria-hidden="true">
+    <div class="admin-modal" aria-hidden="true" hidden>
       <div class="admin-card" role="dialog" aria-modal="true" aria-labelledby="admin-title">
         <button class="admin-close" type="button" aria-label="Fermer le panel admin">&times;</button>
         <p class="eyebrow">Acces prive</p>
         <h2 id="admin-title">Panel admin</h2>
-        <p>Entre le code a 4 chiffres pour modifier les textes du site.</p>
+        <p>Les codes admin sont desactives. Connecte-toi avec Discord et le role Owner.</p>
         <form class="admin-form">
           <label for="admin-code">Code admin</label>
           <input
@@ -488,6 +488,6 @@
       };
     </script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="script.js?v=discord-owner-admin-1"></script>
+    <script src="script.js?v=discord-owner-only-1"></script>
   </body>
 </html>

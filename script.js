@@ -464,7 +464,10 @@ rosterPanelTabs.forEach((button) => {
 
 if (rosterConfigToggle) {
   rosterConfigToggle.addEventListener("click", () => {
-    if (!rosterConfigPanel) {
+    if (!rosterConfigPanel || !isRosterOwner()) {
+      if (rosterConfigPanel) {
+        rosterConfigPanel.hidden = true;
+      }
       return;
     }
 
@@ -691,7 +694,7 @@ function removeLegacyRosterSections() {
 }
 
 function isRosterOwner() {
-  return new Set(currentDiscordProfile?.matched_role_keys || []).has("owner");
+  return Array.isArray(currentDiscordProfile?.matched_role_keys) && currentDiscordProfile.matched_role_keys.includes("owner");
 }
 
 function openRosterPanel(rosterKey) {
@@ -750,6 +753,10 @@ function renderRosterPanel() {
 
   if (rosterConfigToggle) {
     rosterConfigToggle.hidden = !isRosterOwner();
+  }
+
+  if (rosterConfigPanel && !isRosterOwner()) {
+    rosterConfigPanel.hidden = true;
   }
 
   rosterPanelTabs.forEach((button) => {
@@ -849,6 +856,9 @@ function fillRosterConfigForm() {
 
 function saveRosterPanelConfig() {
   if (!isRosterOwner() || !rosterConfigPanel || !currentRosterPanelKey) {
+    if (rosterConfigPanel) {
+      rosterConfigPanel.hidden = true;
+    }
     return;
   }
 
